@@ -1,0 +1,29 @@
+{
+  "name": "brain.js-cnn-integrity",
+  "version": "0.0.0",
+  "description": "Testing Brain.js GPU convolutional layers algorithmic integrity against ConvNetJS CPU",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest --env=node"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BrainJS/brain.js-cnn-integrity.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/BrainJS/brain.js-cnn-integrity/issues"
+  },
+  "homepage": "https://github.com/BrainJS/brain.js-cnn-integrity#readme",
+  "dependencies": {
+    "acorn": "^5.7.2",
+    "brain.js": "github:brainjs/brain.js#develop",
+    "convnetjs": "^0.3.0",
+    "gpu-mock.js": "^1.0.1",
+    "jest": "^23.5.0",
+    "matrix-log.js": "^1.0.0",
+    "query-ast": "^1.0.1",
+    "recursive-iterator": "^3.3.0"
+  }
+}
