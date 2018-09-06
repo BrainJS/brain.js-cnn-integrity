@@ -1,16 +1,12 @@
 const convnet = require('convnetjs');
-const Brain = require('brain.js');
+const compareFilters = require('brain.js/dist/layer/convolution').compareFilters;
 const MatrixLog = require('matrix-log.js');
 const gpuMock = require('gpu-mock.js');
-// const inject = require('../utilities/inject');
-const acorn = require('acorn');
-const acornLoose = require('acorn/dist/acorn_loose');
-const createQueryWrapper = require('query-ast');
 
 describe('Convolution', () => {
   describe('backpropagation', () => {
-    describe('algorithm', () => {
-      function getConvLayerInstance(settings) {
+    describe('algorithm shape', () => {
+      function getConvNetConvLayerInstance(settings) {
         const filters = [];
         for (let i = 0; i < settings.filterCount; i++) {
           const filter = {
@@ -35,7 +31,7 @@ describe('Convolution', () => {
           biases: {
             dw: [1,2,3,4]
           },
-          stride: Math.max(settings.stride, 1),
+          stride: Math.max(settings.stride || 0, 1),
           pad: settings.padding || 0,
           in_sx: settings.input.width,
           in_sy: settings.input.weight,
@@ -49,12 +45,12 @@ describe('Convolution', () => {
               return 0;
             }
           },
-          backwardCallback: settings.backwardCallback
+          callback: settings.callback
         };
         return instance;
       }
-      function getConvLayerBackward() {
-        const value = `this.backwardCallback({
+      function getConvNetConvLayerBackward() {
+        const value = `this.callback({
           targets: ['f.dw', 'V.dw'],
           x, y, d,
           ox, oy,
@@ -69,7 +65,40 @@ describe('Convolution', () => {
             target + '\n' + value + '\n')
           .replace('global.zeros', 'new Array');
 
-        return eval('(' + result + ')');
+        return eval(`(${result})`);
+      }
+      function getBrainConvolutionLayerCompareFilters(settings) {
+        const target = 'sum += deltas[this.thread.z][inputY + y][inputX + x] * inputs[this.thread.z][y][x]';
+        const result = compareFilters.toString()
+          .replace(target, `\nthis.constants.callback({
+            deltaX: inputX + x,
+            deltaY: inputY + y,
+            filterX: this.thread.x,
+            filterY: this.thread.y
+          })\n`);
+
+        const mockInput = [
+          [
+            [0,0,0,0],
+            [0,0,0,0],
+            [0,0,0,0],
+            [0,0,0,0]
+          ]
+        ];
+
+        return gpuMock(eval(`(${result})`), {
+          output: [settings.filterWidth, settings.filterHeight],
+          constants: {
+            strideX: Math.max(settings.stride || 0, 1),
+            strideY: Math.max(settings.stride || 0, 1),
+            paddingX: Math.max(settings.padding || 0, 0),
+            paddingY: Math.max(settings.padding || 0, 0),
+            filterWidth: settings.filterWidth,
+            filterHeight: settings.filterHeight,
+            filterCount: settings.filterCount,
+            callback: settings.callback
+          }
+        })(mockInput,mockInput,mockInput);
       }
       describe('filters', () => {
         it('can backpropagate to a 4x4 filter matrix', () => {
@@ -83,31 +112,40 @@ describe('Convolution', () => {
           const inputHeight = 4;
           const inputDepth = 1;
           const convnetMatrixLog = new MatrixLog('filters', filterWidth, filterHeight);
+          const brainMatrixLog = new MatrixLog('filters', filterWidth, filterHeight);
 
-          getConvLayerBackward().call(
-            getConvLayerInstance({
-              filterWidth,
-              filterHeight,
-              filterCount,
-              width: outputWidth,
-              height: outputHeight,
-              depth: outputDepth,
-              input: {
-                width: inputWidth,
-                height: inputHeight,
-                depth: inputDepth,
-              },
-              backwardCallback: (stats) => {
+          const settings = {
+            filterWidth,
+            filterHeight,
+            filterCount,
+            width: outputWidth,
+            height: outputHeight,
+            depth: outputDepth,
+            input: {
+              width: inputWidth,
+              height: inputHeight,
+              depth: inputDepth,
+            },
+          };
+
+          getConvNetConvLayerBackward().call(
+            getConvNetConvLayerInstance(Object.assign({
+              callback: (stats) => {
                 if (stats.targets && stats.targets.join(',') === 'f.dw,V.dw') {
                   convnetMatrixLog.add('deltas', stats.fx, stats.fy, stats.ox, stats.oy, outputWidth, outputHeight);
-                  convnetMatrixLog.add('inputs', stats.fx, stats.fy, stats.ax, stats.ay, inputWidth, inputHeight);
                 }
               }
-            }));
+            }, settings)));
 
-          // gpuMock(Brain.layers.Convolution.compareFilters)
-          console.log(convnetMatrixLog.toString('deltas'));
-          // TODO: compare with brain.js
+          getBrainConvolutionLayerCompareFilters(Object.assign({
+            callback: (stats) => {
+              brainMatrixLog.add('deltas', stats.filterX, stats.filterY, stats.deltaX, stats.deltaY, outputWidth, outputHeight);
+            }
+          }, settings));
+
+          const expected = convnetMatrixLog.toString('deltas').split(/\n/g);
+          const result = brainMatrixLog.toString('deltas').split(/\n/g);
+          expect(result).toEqual(expected);
         });
       });
     });
