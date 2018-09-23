@@ -72,19 +72,7 @@ describe('Convolution', () => {
         //const target = 'sum += deltas[this.thread.z][inputY + y][inputX + x] * inputs[this.thread.z][y][x]';
         /// start
         function compareFilters(filterDeltas, inputs, deltas) {
-          const minInputX = getCompareFilterInputIndexStart(
-            this.thread.x,
-            this.constants.strideX,
-            this.constants.paddingX
-          )
-          const minInputY = getCompareFilterInputIndexStart(
-            this.thread.y,
-            this.constants.strideY,
-            this.constants.paddingY
-          )
           const inputZ = this.thread.z;
-          const maxInputX = Math.min(this.constants.inputWidth, minInputX + this.constants.inputWidth)
-          const maxInputY = Math.min(this.constants.inputHeight, minInputY + this.constants.inputHeight)
           //
           // const deltaY = getCompareFilterDeltasIndexStart(
           //   this.thread.y,
@@ -112,9 +100,10 @@ describe('Convolution', () => {
           // )
 
           let sum = 0//filterDeltas[this.thread.z][this.thread.y][this.thread.x];
-          for (let inputY = minInputY; inputY < maxInputY; inputY += this.constants.strideY) {
-            for (let inputX = minInputX; inputX < maxInputX; inputX += this.constants.strideX) {
-              // sum += inputs[z][y][x]// * deltas[inputZ][deltaY][deltaX]
+          for (let inputY = this.thread.y - this.constants.paddingY; inputY < this.constants.inputHeight; inputY += this.constants.strideY) {
+            if (inputY < 0) continue;
+            for (let inputX = this.thread.x - this.constants.paddingX; inputX < this.constants.inputWidth; inputX += this.constants.strideX) {
+              if (inputX < 0) continue;
 
               this.constants.callback({
                 inputX: inputX,
@@ -128,26 +117,6 @@ describe('Convolution', () => {
           }
 
           return sum;
-
-          function getCompareFilterDeltasIndexStart(index, stride, padding) {
-            return Math.max((index * stride) - padding, 0)
-          }
-
-          function getCompareFilterDeltasIndexStop(index, stride, padding, deltaSize, outputSize) {
-            return Math.min(((index * stride) - padding) + outputSize, deltaSize)
-          }
-
-          // function getCompareFilterInputIndexStart(index, stride, padding) {
-          //   return Math.max(padding - (index * stride), 0)
-          // }
-
-          function getCompareFilterInputIndexStart(index, stride, padding) {
-            return Math.max((index * stride) - padding, 0)
-          }
-
-          function getCompareFilterInputIndexStop(index, stride, padding, deltaSize, inputSize) {
-            return Math.min(padding - (index * stride) + deltaSize, inputSize)
-          }
         }
 
 
@@ -182,6 +151,8 @@ describe('Convolution', () => {
             filterHeight: settings.filterHeight,
             inputWidth: settings.input.width,
             inputHeight: settings.input.height,
+            deltaWidth: settings.width,
+            deltaHeight: settings.height,
             callback: settings.callback
           }
         })(mockInput,mockInput,mockInput);
@@ -373,15 +344,15 @@ describe('Convolution', () => {
             width: 6,
             height: 6,
             depth: 3,
-            filterWidth: 7,
-            filterHeight: 7,
+            filterWidth: 6,
+            filterHeight: 6,
             input: {
-              width: 6,
-              height: 6,
+              width: 4,
+              height: 4,
               depth: 2,
             },
             padding: 2,
-            stride: 1
+            stride: 2
           };
 
           const logs = setupLogs(settings);
