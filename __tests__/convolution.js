@@ -69,102 +69,40 @@ describe('Convolution', () => {
         return eval(`(${result})`);
       }
       function getBrainConvolutionLayerCompareFilters(settings) {
-        const target = 'sum += deltas[this.thread.z][inputY + y][inputX + x] * inputs[this.thread.z][y][x]';
-        /// start
-        function compareFilters(filterDeltas, inputs, deltas) {
-          const inputZ = this.thread.z;
-          let sum = 0//filterDeltas[this.thread.z][this.thread.y][this.thread.x];
-
-          const startingInputY = this.thread.y - this.constants.paddingY;
-          const startingInputX = this.thread.x - this.constants.paddingX;
-
-          // const startingDeltaY = this.constants.deltaHeight + this.constants.paddingY - 1 - this.thread.y;
-          // const startingDeltaX = this.constants.deltaWidth + this.constants.paddingX - 1 - this.thread.x;
-
-          let startingDeltaY = 0;
-          let startingDeltaX = 0;
-
-          for (let y = 0; y < this.constants.slideHeight; y++) {
-            const inputY = startingInputY + (y * this.constants.strideY);
-            startingDeltaY++;
-            startingDeltaX = 0;
-
-            if (inputY < 0 || inputY >= this.constants.inputHeight) continue;
-            for (let x = 0; x < this.constants.slideWidth; x++) {
-              const inputX = startingInputX + (x * this.constants.strideX);
-              startingDeltaX++;
-              if (inputX < 0 || inputX >= this.constants.inputWidth) continue;
-
-              for (let deltaZ = 0; deltaZ < this.constants.deltaDepth; deltaZ++) {
-                const deltaX = startingDeltaX - 1;
-                const deltaY = startingDeltaY - 1;
-                this.constants.callback({
-                  inputX: inputX,
-                  inputY: inputY,
-                  inputZ: inputZ,
-                  deltaX: deltaX,
-                  deltaY: deltaY,
-                  deltaZ: deltaZ,
-                  filterX: this.thread.x,
-                  filterY: this.thread.y,
-                  filterZ: this.thread.z
-                })
-              }
-            }
-          }
-
-          return sum;
-        }
-        // function compareFilters(filterDeltas, inputs, deltas) {
-        //   const startingInputY = this.thread.y - this.constants.paddingY
-        //   const startingInputX = this.thread.x - this.constants.paddingX
-        //
-        //   let deltaY = 0
-        //
-        //   let sum = filterDeltas[this.thread.z][this.thread.y][this.thread.x]
-        //   for (let y = 0; y < this.constants.slideHeight; y++) {
-        //     deltaY++
-        //     let deltaX = 0
-        //
-        //     const inputY = startingInputY + (y * this.constants.strideY)
-        //     if (inputY < 0 || inputY >= this.constants.inputHeight) continue
-        //
-        //     for (let x = 0; x < this.constants.slideWidth; x++) {
-        //       deltaX++
-        //
-        //       const inputX = startingInputX + (x * this.constants.strideX)
-        //       if (inputX < 0 || inputX >= this.constants.inputWidth) continue
-        //
-        //       const input = inputs[this.thread.z][inputY][inputX]
-        //       for (let deltaZ = 0; deltaZ < this.constants.deltaDepth; deltaZ++) {
-        //         sum += input * deltas[deltaZ][deltaY - 1][deltaX - 1]
-        //       }
-        //     }
-        //   }
-        //
-        //   return sum
-        // }
-
-
-        /// end
+        const target = 'sum += input * deltas[deltaZ][deltaY][deltaX]';
         const result = compareFilters.toString()
-        //   .replace(target, `\nthis.constants.callback({
-        //     deltaX: inputX + x,
-        //     deltaY: inputY + y,
-        //     inputX: x,
-        //     inputY: y,
-        //     filterX: this.thread.x,
-        //     filterY: this.thread.y
-        //   })\n`);
+          .replace(target, target + `\nthis.constants.callback({
+            inputX: inputX,
+            inputY: inputY,
+            inputZ: this.thread.z,
+            deltaX: deltaX,
+            deltaY: deltaY,
+            deltaZ: deltaZ,
+            filterX: this.thread.x,
+            filterY: this.thread.y,
+            filterZ: this.thread.z
+          })\n`);
 
-        const mockInput = [
-          [
-            [0,0,0,0],
-            [0,0,0,0],
-            [0,0,0,0],
-            [0,0,0,0]
-          ]
-        ];
+        const mockFilterDeltas = fillPlusPlus(settings.filterWidth, settings.filterHeight, settings.depth);
+        const mockInputs = fillPlusPlus(settings.input.width, settings.input.height, settings.input.depth);
+        const mockDeltas = fillPlusPlus(settings.width, settings.height, settings.depth);
+
+        function fillPlusPlus(width, height, depth) {
+          const result = [];
+          let i = 0;
+          for (let z = 0; z < depth; z++) {
+            const rows = [];
+            for (let y = 0; y < height; y++) {
+              const columns = [];
+              for (let x = 0; x < width; x++) {
+                columns.push(i++);
+              }
+              rows.push(columns);
+            }
+            result.push(rows);
+          }
+          return result;
+        }
 
         const stride = Math.max(settings.stride || 0, 1);
         const padding = Math.max(settings.padding || 0, 0);
@@ -192,7 +130,7 @@ describe('Convolution', () => {
             slideWidth: slideWidth,
             slideHeight: slideHeight
           }
-        })(mockInput,mockInput,mockInput);
+        })(mockFilterDeltas, mockInputs, mockDeltas);
       }
       describe('filters', () => {
         function setupLogs(settings) {
@@ -406,8 +344,8 @@ describe('Convolution', () => {
             const resultInputs = logs.brainMatrixLog.toString('inputs').split(/\n/g);
             const expectedInputs = logs.convnetMatrixLog.toString('inputs').split(/\n/g);
             require('fs').writeFileSync('inputs.log', expectedInputs.join('\n'));
-            resultInputs.length = 200;
-            expectedInputs.length = 200;
+            // resultInputs.length = 200;
+            // expectedInputs.length = 200;
             expect(resultInputs).toEqual(expectedInputs);
           });
           it('can backpropagate from a "12x12x8 input matrix" and a "24x24x8 output matrix" to a "5x5x8 filter matrix" with padding of 2', () => {
@@ -429,8 +367,8 @@ describe('Convolution', () => {
             const logs = setupLogs(settings);
             const resultInputs = logs.brainMatrixLog.toString('inputs').split(/\n/g);
             const expectedInputs = logs.convnetMatrixLog.toString('inputs').split(/\n/g);
-            resultInputs.length = 200;
-            expectedInputs.length = 200;
+            // resultInputs.length = 200;
+            // expectedInputs.length = 200;
             expect(resultInputs).toEqual(expectedInputs);
           });
           
@@ -452,8 +390,8 @@ describe('Convolution', () => {
             const logs = setupLogs(settings);
             const resultInputs = logs.brainMatrixLog.toString('inputs').split(/\n/g);
             const expectedInputs = logs.convnetMatrixLog.toString('inputs').split(/\n/g);
-            resultInputs.length = 200;
-            expectedInputs.length = 200;
+            // resultInputs.length = 200;
+            // expectedInputs.length = 200;
             expect(resultInputs).toEqual(expectedInputs);
           });
 
@@ -475,8 +413,8 @@ describe('Convolution', () => {
             const logs = setupLogs(settings);
             const resultInputs = logs.brainMatrixLog.toString('inputs').split(/\n/g);
             const expectedInputs = logs.convnetMatrixLog.toString('inputs').split(/\n/g);
-            resultInputs.length = 200;
-            expectedInputs.length = 200;
+            // resultInputs.length = 200;
+            // expectedInputs.length = 200;
             expect(resultInputs).toEqual(expectedInputs);
           });
 
@@ -499,8 +437,8 @@ describe('Convolution', () => {
             const logs = setupLogs(settings);
             const resultInputs = logs.brainMatrixLog.toString('inputs').split(/\n/g);
             const expectedInputs = logs.convnetMatrixLog.toString('inputs').split(/\n/g);
-            resultInputs.length = 200;
-            expectedInputs.length = 200;
+            // resultInputs.length = 200;
+            // expectedInputs.length = 200;
             expect(resultInputs).toEqual(expectedInputs);
           });
         });
