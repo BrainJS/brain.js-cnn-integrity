@@ -69,7 +69,7 @@ describe('Convolution', () => {
         return eval(`(${result})`);
       }
       function getBrainConvolutionLayerCompareFilters(settings) {
-        //const target = 'sum += deltas[this.thread.z][inputY + y][inputX + x] * inputs[this.thread.z][y][x]';
+        const target = 'sum += deltas[this.thread.z][inputY + y][inputX + x] * inputs[this.thread.z][y][x]';
         /// start
         function compareFilters(filterDeltas, inputs, deltas) {
           const inputZ = this.thread.z;
@@ -78,21 +78,26 @@ describe('Convolution', () => {
           const startingInputY = this.thread.y - this.constants.paddingY;
           const startingInputX = this.thread.x - this.constants.paddingX;
 
-          const startingDeltaY = this.constants.deltaHeight + this.constants.paddingY - 1 - this.thread.y;
-          const startingDeltaX = this.constants.deltaWidth + this.constants.paddingX - 1 - this.thread.x;
+          // const startingDeltaY = this.constants.deltaHeight + this.constants.paddingY - 1 - this.thread.y;
+          // const startingDeltaX = this.constants.deltaWidth + this.constants.paddingX - 1 - this.thread.x;
+
+          let startingDeltaY = 0;
+          let startingDeltaX = 0;
 
           for (let y = 0; y < this.constants.slideHeight; y++) {
             const inputY = startingInputY + (y * this.constants.strideY);
-            if (inputY < 0 || inputY >= this.constants.inputHeight) continue;
+            startingDeltaY++;
+            startingDeltaX = 0;
 
+            if (inputY < 0 || inputY >= this.constants.inputHeight) continue;
             for (let x = 0; x < this.constants.slideWidth; x++) {
               const inputX = startingInputX + (x * this.constants.strideX);
+              startingDeltaX++;
               if (inputX < 0 || inputX >= this.constants.inputWidth) continue;
 
-              // for (let deltaZ = 0; deltaZ < this.constants.deltaDepth; deltaZ++) {
-                const deltaX = startingDeltaX - x;
-                const deltaY = startingDeltaY - y;
-                const deltaZ = 0;
+              for (let deltaZ = 0; deltaZ < this.constants.deltaDepth; deltaZ++) {
+                const deltaX = startingDeltaX - 1;
+                const deltaY = startingDeltaY - 1;
                 this.constants.callback({
                   inputX: inputX,
                   inputY: inputY,
@@ -104,12 +109,41 @@ describe('Convolution', () => {
                   filterY: this.thread.y,
                   filterZ: this.thread.z
                 })
-              // }
+              }
             }
           }
 
           return sum;
         }
+        // function compareFilters(filterDeltas, inputs, deltas) {
+        //   const startingInputY = this.thread.y - this.constants.paddingY
+        //   const startingInputX = this.thread.x - this.constants.paddingX
+        //
+        //   let deltaY = 0
+        //
+        //   let sum = filterDeltas[this.thread.z][this.thread.y][this.thread.x]
+        //   for (let y = 0; y < this.constants.slideHeight; y++) {
+        //     deltaY++
+        //     let deltaX = 0
+        //
+        //     const inputY = startingInputY + (y * this.constants.strideY)
+        //     if (inputY < 0 || inputY >= this.constants.inputHeight) continue
+        //
+        //     for (let x = 0; x < this.constants.slideWidth; x++) {
+        //       deltaX++
+        //
+        //       const inputX = startingInputX + (x * this.constants.strideX)
+        //       if (inputX < 0 || inputX >= this.constants.inputWidth) continue
+        //
+        //       const input = inputs[this.thread.z][inputY][inputX]
+        //       for (let deltaZ = 0; deltaZ < this.constants.deltaDepth; deltaZ++) {
+        //         sum += input * deltas[deltaZ][deltaY - 1][deltaX - 1]
+        //       }
+        //     }
+        //   }
+        //
+        //   return sum
+        // }
 
 
         /// end
@@ -221,8 +255,10 @@ describe('Convolution', () => {
                     console.log(e);
                   }
                   try {
-                    if (stats.fx === 0 && stats.fy === 0) {
-                      debugger;
+                    if (
+                      stats.fx === 0 && stats.fy === 0
+                      && deltasLog.x === 1 && deltasLog.y === 1) {
+                      // debugger;
                     }
                     convnetMatrixLog.add(deltasLog);
                   } catch (e) {
@@ -280,7 +316,8 @@ describe('Convolution', () => {
                     y: stats.deltaY,
                     z: stats.deltaZ,
                     width: settings.width,
-                    height: settings.height
+                    height: settings.height,
+                    depth: settings.depth
                   });
               } catch (e) {
                 // console.log('error in deltas', stats);
@@ -525,7 +562,7 @@ describe('Convolution', () => {
             const expectedDeltas = logs.convnetMatrixLog.toString('deltas').split(/\n/g);
             expect(resultDeltas).toEqual(expectedDeltas);
           });
-          it.only('can backpropagate from a "6x6x8 input matrix" and a "24x24x8 output matrix" to a "5x5x8 filter matrix" with padding and stride of 2', () => {
+          it('can backpropagate from a "6x6x8 input matrix" and a "24x24x8 output matrix" to a "5x5x8 filter matrix" with padding and stride of 2', () => {
             const settings = {
               width: 24,
               height: 24,
@@ -537,16 +574,16 @@ describe('Convolution', () => {
                 height: 6,
                 depth: 8,
               },
-              padding: 4,
-              stride: 1
+              padding: 2,
+              stride: 2
             };
 
             const logs = setupLogs(settings);
             const resultDeltas = logs.brainMatrixLog.toString('deltas').split(/\n/g);
-            resultDeltas.length = 200;
+            // resultDeltas.length = 200;
             const expectedDeltas = logs.convnetMatrixLog.toString('deltas').split(/\n/g);
-            require('fs').writeFileSync('deltas.log', expectedDeltas.join('\n'));
-            expectedDeltas.length = 200;
+            // require('fs').writeFileSync('deltas.log', expectedDeltas.join('\n'));
+            // expectedDeltas.length = 200;
             expect(resultDeltas).toEqual(expectedDeltas);
           });
         });
