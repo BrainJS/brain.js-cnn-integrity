@@ -16,7 +16,7 @@
     "url": "https://github.com/BrainJS/brain.js-cnn-integrity/issues"
   },
   "homepage": "https://github.com/BrainJS/brain.js-cnn-integrity#readme",
-  "dependencies": {
+  "devDependencies": {
     "brain.js": "github:brainjs/brain.js#develop",
     "convnetjs": "^0.3.0",
     "gpu-mock.js": "^1.0.1",
