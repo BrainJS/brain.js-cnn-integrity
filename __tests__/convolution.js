@@ -50,7 +50,12 @@ describe('Convolution', () => {
 
           const target = 'V.dw[ix1] += f.w[ix2]*chain_grad;';
 
-          const result = convnet.ConvLayer.prototype.backward.toString()
+          const backwardString = convnet.ConvLayer.prototype.backward.toString();
+          if (backwardString.indexOf(target) < 0) {
+            throw new Error(`function injection target of "${target}" cannot be found`);
+          }
+
+          const result = backwardString
             .replace(target,
               target + '\n' + value + '\n')
             .replace('global.zeros', 'new Array');
@@ -58,52 +63,61 @@ describe('Convolution', () => {
           return eval(`(${result})`);
         }
         function getBrainConvolutionLayerCompareFilters(settings) {
-        const target = 'sum += input * deltas[deltaZ][deltaY][deltaX]';
-        const result = compareFilters.toString()
-          .replace(target, target + `\nthis.constants.callback({
-            inputX: inputX,
-            inputY: inputY,
-            inputZ: this.thread.z,
-            deltaX: deltaX,
-            deltaY: deltaY,
-            deltaZ: deltaZ,
-            filterX: this.thread.x,
-            filterY: this.thread.y,
-            filterZ: this.thread.z
-          })\n`);
-
-        const mockFilterDeltas = fillPlusPlus(settings.filterWidth, settings.filterHeight, settings.depth);
-        const mockInputs = fillPlusPlus(settings.input.width, settings.input.height, settings.input.depth);
-        const mockDeltas = fillPlusPlus(settings.width, settings.height, settings.depth);
-
-        const stride = Math.max(settings.stride || 0, 1);
-        const padding = Math.max(settings.padding || 0, 0);
-        const paddedInputWidth = settings.input.width + padding;
-        const paddedInputHeight = settings.input.height + padding;
-        const slideWidth = Math.min(settings.width, paddedInputWidth);
-        const slideHeight = Math.min(settings.height, paddedInputHeight);
-
-        return gpuMock(eval(`(${result})`), {
-          output: [settings.filterWidth, settings.filterHeight, settings.input.depth],
-          constants: {
-            strideX: stride,
-            strideY: stride,
-            paddingX: padding,
-            paddingY: padding,
-            filterWidth: settings.filterWidth,
-            filterHeight: settings.filterHeight,
-            inputWidth: settings.input.width,
-            inputHeight: settings.input.height,
-            deltaWidth: settings.width,
-            deltaHeight: settings.height,
-            deltaDepth: settings.depth,
-            callback: settings.callback,
-
-            slideWidth: slideWidth,
-            slideHeight: slideHeight
+          const target = 'sum += input * deltas[this.constants.deltaZ][deltaY][deltaX]';
+          const compareFiltersString = compareFilters.toString();
+          if (compareFiltersString.indexOf(target) < 0) {
+            throw new Error(`function injection target of "${target}" cannot be found`);
           }
-        })(mockFilterDeltas, mockInputs, mockDeltas);
-      }
+          const compareFiltersInjectedString = compareFiltersString
+            .replace(target, target + `\nthis.constants.callback({
+              inputX: inputX,
+              inputY: inputY,
+              inputZ: this.thread.z,
+              deltaX: deltaX,
+              deltaY: deltaY,
+              deltaZ: this.constants.deltaZ,
+              filterX: this.thread.x,
+              filterY: this.thread.y,
+              filterZ: this.thread.z
+            })\n`);
+          const compareFiltersInjected = eval(`(${compareFiltersInjectedString})`);
+
+          const filterDeltas = fillPlusPlus(settings.filterWidth, settings.filterHeight, settings.input.depth);
+          const inputs = fillPlusPlus(settings.input.width, settings.input.height, settings.input.depth);
+          const deltas = fillPlusPlus(settings.width, settings.height, settings.depth);
+
+          const stride = Math.max(settings.stride || 0, 1);
+          const padding = Math.max(settings.padding || 0, 0);
+          const paddedInputWidth = settings.input.width + padding;
+          const paddedInputHeight = settings.input.height + padding;
+          const slideWidth = Math.min(settings.width, paddedInputWidth);
+          const slideHeight = Math.min(settings.height, paddedInputHeight);
+
+          const output = [];
+          for (let i = 0; i < settings.depth; i++) {
+            output.push(gpuMock(compareFiltersInjected, {
+              output: [settings.filterWidth, settings.filterHeight, settings.input.depth],
+              constants: {
+                strideX: stride,
+                strideY: stride,
+                paddingX: padding,
+                paddingY: padding,
+                filterWidth: settings.filterWidth,
+                filterHeight: settings.filterHeight,
+                inputWidth: settings.input.width,
+                inputHeight: settings.input.height,
+                deltaWidth: settings.width,
+                deltaHeight: settings.height,
+                deltaDepth: settings.depth,
+                callback: settings.callback,
+                deltaZ: i,
+                slideWidth: slideWidth,
+                slideHeight: slideHeight
+              }
+            })(filterDeltas, inputs, deltas));
+          }
+          return output;
+        }
         function setupLogs(settings) {
           const convnetMatrixLog = new MatrixLog('filters', settings.filterWidth, settings.filterHeight, settings.input.depth);
           const brainMatrixLog = new MatrixLog('filters', settings.filterWidth, settings.filterHeight, settings.input.depth);
@@ -572,7 +586,7 @@ describe('Convolution', () => {
         });
       });
       describe('output', () => {
-        function setupCompareFilters(settings) {
+        function setupCompareFilters(settings, deltaZ) {
           const stride = Math.max(settings.stride || 0, 1);
           const padding = Math.max(settings.padding || 0, 0);
           const paddedInputWidth = settings.input.width + padding;
@@ -583,6 +597,7 @@ describe('Convolution', () => {
           return gpuMock(compareFilters, {
             output: [settings.filterWidth, settings.filterHeight, settings.input.depth],
             constants: {
+              deltaZ: deltaZ,
               strideX: stride,
               strideY: stride,
               paddingX: padding,
@@ -599,6 +614,33 @@ describe('Convolution', () => {
             }
           });
         }
+        function setupOutputs(settings) {
+          const convnetInstance = getConvNetConvLayerInstance(settings);
+          const filterDeltas = fillPlusPlus(settings.filterWidth, settings.filterHeight, settings.input.depth);
+          const inputs = fillPlusPlus(settings.input.width, settings.input.height, settings.input.depth);
+          const deltas = fillPlusPlus(settings.width, settings.height, settings.depth);
+
+          for (let i = 0; i < settings.input.depth; i++) {
+            expect(filterDeltas).toEqual(volDWToArrays(convnetInstance.filters[i]));
+          }
+
+          expect(inputs).toEqual(volWToArrays(convnetInstance.in_act));
+          expect(deltas).toEqual((volDWToArrays(convnetInstance.out_act)));
+
+          const compareFilters = [];
+          for (let i = 0; i < settings.depth; i++) {
+            compareFilters.push(setupCompareFilters(settings, i));
+          }
+          convnet.ConvLayer.prototype.backward.call(convnetInstance);
+          const expected = convnetInstance.filters.map(volDWToArrays);
+          const result = [];
+          for (let i = 0; i < settings.depth; i++) {
+            result.push(compareFilters[i](filterDeltas, inputs, deltas));
+          }
+          return {
+            expected, result
+          }
+        }
         it('can backpropagate from a "4x4x1 input matrix" and a "1x1x1 output matrix" to a "2x2x1 filter matrix"', () => {
           const settings = {
             width: 1,
@@ -613,15 +655,11 @@ describe('Convolution', () => {
             },
           };
 
-          const convnetInstance = getConvNetConvLayerInstance(settings);
-          convnet.ConvLayer.prototype.backward.call(convnetInstance);
-          const mockFilterDeltas = fillPlusPlus(settings.filterWidth, settings.filterHeight, settings.depth);
-          const mockInputs = fillPlusPlus(settings.input.width, settings.input.height, settings.input.depth);
-          const mockDeltas = fillPlusPlus(settings.width, settings.height, settings.depth);
-          const compareFilters = setupCompareFilters(settings);
-          const result = compareFilters(mockFilterDeltas, mockInputs, mockDeltas);
-          expect(convnetInstance.filters.length).toBe(settings.input.depth);
-          expect(result).toEqual(volDWToArrays(convnetInstance.filters[0]));
+          const { result, expected } = setupOutputs(settings);
+
+          expect(expected.length).toBe(settings.depth);
+          expect(result.length).toBe(settings.depth);
+          expect(result).toEqual(expected);
         });
         it('can backpropagate from a "4x4x1 input matrix" and a "2x2x1 output matrix" to a "2x2x1 filter matrix"', () => {
           const settings = {
@@ -637,15 +675,11 @@ describe('Convolution', () => {
             },
           };
 
-          const convnetInstance = getConvNetConvLayerInstance(settings);
-          convnet.ConvLayer.prototype.backward.call(convnetInstance);
-          const mockFilterDeltas = fillPlusPlus(settings.filterWidth, settings.filterHeight, settings.depth);
-          const mockInputs = fillPlusPlus(settings.input.width, settings.input.height, settings.input.depth);
-          const mockDeltas = fillPlusPlus(settings.width, settings.height, settings.depth);
-          const compareFilters = setupCompareFilters(settings);
-          const result = compareFilters(mockFilterDeltas, mockInputs, mockDeltas);
-          expect(convnetInstance.filters.length).toBe(settings.input.depth);
-          expect(result).toEqual(volDWToArrays(convnetInstance.filters[0]));
+          const { result, expected } = setupOutputs(settings);
+
+          expect(expected.length).toBe(settings.depth);
+          expect(result.length).toBe(settings.depth);
+          expect(result).toEqual(expected);
         });
         it('can backpropagate from a "4x4x1 input matrix" and a "4x4x1 output matrix" to a "4x4x1 filter matrix"', () => {
           const settings = {
@@ -661,15 +695,11 @@ describe('Convolution', () => {
             },
           };
 
-          const convnetInstance = getConvNetConvLayerInstance(settings);
-          convnet.ConvLayer.prototype.backward.call(convnetInstance);
-          const mockFilterDeltas = fillPlusPlus(settings.filterWidth, settings.filterHeight, settings.depth);
-          const mockInputs = fillPlusPlus(settings.input.width, settings.input.height, settings.input.depth);
-          const mockDeltas = fillPlusPlus(settings.width, settings.height, settings.depth);
-          const compareFilters = setupCompareFilters(settings);
-          const result = compareFilters(mockFilterDeltas, mockInputs, mockDeltas);
-          expect(convnetInstance.filters.length).toBe(settings.input.depth);
-          expect(result).toEqual(volDWToArrays(convnetInstance.filters[0]));
+          const { result, expected } = setupOutputs(settings);
+
+          expect(expected.length).toBe(settings.depth);
+          expect(result.length).toBe(settings.depth);
+          expect(result).toEqual(expected);
         });
         it('can backpropagate from a "6x6x8 input matrix" and a "24x24x8 output matrix" to a "5x5x8 filter matrix" with padding of 2 and stride of 2', () => {
           const settings = {
@@ -687,15 +717,11 @@ describe('Convolution', () => {
             stride: 2
           };
 
-          const convnetInstance = getConvNetConvLayerInstance(settings);
-          convnet.ConvLayer.prototype.backward.call(convnetInstance);
-          const mockFilterDeltas = fillPlusPlus(settings.filterWidth, settings.filterHeight, settings.depth);
-          const mockInputs = fillPlusPlus(settings.input.width, settings.input.height, settings.input.depth);
-          const mockDeltas = fillPlusPlus(settings.width, settings.height, settings.depth);
-          const compareFilters = setupCompareFilters(settings);
-          const result = compareFilters(mockFilterDeltas, mockInputs, mockDeltas);
-          expect(convnetInstance.filters.length).toBe(settings.input.depth);
-          expect(result).toEqual(volDWToArrays(convnetInstance.filters[0]));
+          const { result, expected } = setupOutputs(settings);
+
+          expect(expected.length).toBe(settings.depth);
+          expect(result.length).toBe(settings.depth);
+          expect(result).toEqual(expected);
         });
         it('can backpropagate from a "12x12x8 input matrix" and a "24x24x8 output matrix" to a "5x5x8 filter matrix" with padding of 2', () => {
           const settings = {
@@ -713,15 +739,11 @@ describe('Convolution', () => {
             stride: 2
           };
 
-          const convnetInstance = getConvNetConvLayerInstance(settings);
-          convnet.ConvLayer.prototype.backward.call(convnetInstance);
-          const mockFilterDeltas = fillPlusPlus(settings.filterWidth, settings.filterHeight, settings.depth);
-          const mockInputs = fillPlusPlus(settings.input.width, settings.input.height, settings.input.depth);
-          const mockDeltas = fillPlusPlus(settings.width, settings.height, settings.depth);
-          const compareFilters = setupCompareFilters(settings);
-          const result = compareFilters(mockFilterDeltas, mockInputs, mockDeltas);
-          expect(convnetInstance.filters.length).toBe(settings.input.depth);
-          expect(result).toEqual(volDWToArrays(convnetInstance.filters[0]));
+          const { result, expected } = setupOutputs(settings);
+
+          expect(expected.length).toBe(settings.depth);
+          expect(result.length).toBe(settings.depth);
+          expect(result).toEqual(expected);
         });
         it('can backpropagate from a "24x24x1 input matrix" and a "24x24x8 output matrix" to a "5x5x1 filter matrix" with padding of 2', () => {
           const settings = {
@@ -738,15 +760,11 @@ describe('Convolution', () => {
             padding: 2
           };
 
-          const convnetInstance = getConvNetConvLayerInstance(settings);
-          convnet.ConvLayer.prototype.backward.call(convnetInstance);
-          const mockFilterDeltas = fillPlusPlus(settings.filterWidth, settings.filterHeight, settings.depth);
-          const mockInputs = fillPlusPlus(settings.input.width, settings.input.height, settings.input.depth);
-          const mockDeltas = fillPlusPlus(settings.width, settings.height, settings.depth);
-          const compareFilters = setupCompareFilters(settings);
-          const result = compareFilters(mockFilterDeltas, mockInputs, mockDeltas);
-          expect(convnetInstance.filters.length).toBe(settings.input.depth);
-          expect(result).toEqual(volDWToArrays(convnetInstance.filters[0]));
+          const { result, expected } = setupOutputs(settings);
+
+          expect(expected.length).toBe(settings.depth);
+          expect(result.length).toBe(settings.depth);
+          expect(result).toEqual(expected);
         });
         it('can backpropagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix" with padding of 2', () => {
           const settings = {
@@ -763,15 +781,11 @@ describe('Convolution', () => {
             padding: 2
           };
 
-          const convnetInstance = getConvNetConvLayerInstance(settings);
-          convnet.ConvLayer.prototype.backward.call(convnetInstance);
-          const mockFilterDeltas = fillPlusPlus(settings.filterWidth, settings.filterHeight, settings.depth);
-          const mockInputs = fillPlusPlus(settings.input.width, settings.input.height, settings.input.depth);
-          const mockDeltas = fillPlusPlus(settings.width, settings.height, settings.depth);
-          const compareFilters = setupCompareFilters(settings);
-          const result = compareFilters(mockFilterDeltas, mockInputs, mockDeltas);
-          expect(convnetInstance.filters.length).toBe(settings.input.depth);
-          expect(result).toEqual(volDWToArrays(convnetInstance.filters[0]));
+          const { result, expected } = setupOutputs(settings);
+
+          expect(expected.length).toBe(settings.depth);
+          expect(result.length).toBe(settings.depth);
+          expect(result).toEqual(expected);
         });
         it('can backpropagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix" with padding of 2 and stride of 2', () => {
           const settings = {
@@ -789,20 +803,33 @@ describe('Convolution', () => {
             stride: 2
           };
 
-          const convnetInstance = getConvNetConvLayerInstance(settings);
-          convnet.ConvLayer.prototype.backward.call(convnetInstance);
-          const mockFilterDeltas = fillPlusPlus(settings.filterWidth, settings.filterHeight, settings.depth);
-          const mockInputs = fillPlusPlus(settings.input.width, settings.input.height, settings.input.depth);
-          const mockDeltas = fillPlusPlus(settings.width, settings.height, settings.depth);
-          const compareFilters = setupCompareFilters(settings);
-          const result = compareFilters(mockFilterDeltas, mockInputs, mockDeltas);
-          expect(convnetInstance.filters.length).toBe(settings.input.depth);
-          expect(result).toEqual(volDWToArrays(convnetInstance.filters[0]));
+          const { result, expected } = setupOutputs(settings);
+
+          expect(expected.length).toBe(settings.depth);
+          expect(result.length).toBe(settings.depth);
+          expect(result).toEqual(expected);
         });
       });
     });
   });
 });
+
+function fillZeros(width, height, depth) {
+  const result = [];
+  let i = 1;
+  for (let z = 0; z < depth; z++) {
+    const rows = [];
+    for (let y = 0; y < height; y++) {
+      const columns = [];
+      for (let x = 0; x < width; x++) {
+        columns.push(0);
+      }
+      rows.push(columns);
+    }
+    result.push(rows);
+  }
+  return result;
+}
 
 function fillPlusPlus(width, height, depth) {
   const result = [];
@@ -856,7 +883,7 @@ function volWToArrays(vol) {
 function volDWToArrays(vol) {
   const result = [];
   for (let z = 0; z < vol.depth; z++) {
-    const rows = []
+    const rows = [];
     for (let y = 0; y < vol.sy; y++) {
       const columns = [];
       for (let x = 0; x < vol.sx; x++) {
