@@ -14,14 +14,12 @@ describe('layer.Convolution.compareFilters()', () => {
       filters.push(filter);
     }
     const outAct = utils.fillPlusPlusVol(settings.width, settings.height, settings.depth);
-
+    const biases = utils.fillPlusPlusVol(1, 1, settings.depth);
     const instance = {
       in_act: utils.fillPlusPlusVol(settings.input.width, settings.input.height, settings.input.depth),
 
       filters: filters,
-      biases: {
-        dw: new Array(settings.depth).fill(0)
-      },
+      biases: biases,
       stride: Math.max(settings.stride || 0, 1),
       pad: settings.padding || 0,
       in_sx: settings.input.width,
