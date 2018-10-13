@@ -275,7 +275,7 @@ describe('layer.Convolution.compareFilters()', () => {
         }
         expect(resultInputs).toEqual(expectedInputs);
       });
-      it('can backpropagate from a "6x6x8 input matrix" and a "24x24x8 output matrix" to a "5x5x8 filter matrix" with padding of 2 and stride of 2', () => {
+      it('can backpropagate from a "6x6x8 input matrix" and a "24x24x8 output matrix" to a "10x10x8 filter matrix" with padding of 2 and stride of 2', () => {
         const settings = {
           width: 24,
           height: 24,
@@ -417,6 +417,10 @@ describe('layer.Convolution.compareFilters()', () => {
         const logs = setupLogs(settings);
         const resultDeltas = logs.brainMatrixLog.toString('deltas').split(/\n/g);
         const expectedDeltas = logs.convnetMatrixLog.toString('deltas').split(/\n/g);
+        if (shortenResults) {
+          resultDeltas.length = 200;
+          expectedDeltas.length = 200;
+        }
         expect(resultDeltas).toEqual(expectedDeltas);
       });
       it('can backpropagate from a "4x4x1 input matrix" and a "2x2x1 output matrix" to a "2x2x1 filter matrix"', () => {
@@ -436,6 +440,10 @@ describe('layer.Convolution.compareFilters()', () => {
         const logs = setupLogs(settings);
         const resultDeltas = logs.brainMatrixLog.toString('deltas').split(/\n/g);
         const expectedDeltas = logs.convnetMatrixLog.toString('deltas').split(/\n/g);
+        if (shortenResults) {
+          resultDeltas.length = 200;
+          expectedDeltas.length = 200;
+        }
         expect(resultDeltas).toEqual(expectedDeltas);
       });
       it('can backpropagate from a "4x4x1 input matrix" and a "4x4x1 output matrix" to a "4x4x1 filter matrix"', () => {
@@ -455,6 +463,10 @@ describe('layer.Convolution.compareFilters()', () => {
         const logs = setupLogs(settings);
         const resultDeltas = logs.brainMatrixLog.toString('deltas').split(/\n/g);
         const expectedDeltas = logs.convnetMatrixLog.toString('deltas').split(/\n/g);
+        if (shortenResults) {
+          resultDeltas.length = 200;
+          expectedDeltas.length = 200;
+        }
         expect(resultDeltas).toEqual(expectedDeltas);
       });
       it('can backpropagate from a "6x6x8 input matrix" and a "24x24x8 output matrix" to a "5x5x8 filter matrix" with padding of 2 and stride of 2', () => {
