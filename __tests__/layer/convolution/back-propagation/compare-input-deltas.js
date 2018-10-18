@@ -1,12 +1,12 @@
 const convnet = require('convnetjs');
-const compareFilters = require('brain.js/dist/layer/convolution').compareFilters;
+const compareInputDeltas = require('brain.js/dist/layer/convolution').compareInputDeltas;
 const MatrixLog = require('matrix-log.js');
 const gpuMock = require('gpu-mock.js');
 const utils = require('../../../../utils');
 
-const shortenResults = false;
+const shortenResults = true;
 
-describe('layer.Convolution.compareFilters()', () => {
+describe('layer.Convolution.compareInputDeltas()', () => {
   function getConvNetConvLayerInstance(settings) {
     const filters = [];
     for (let i = 0; i < settings.depth; i++) {
@@ -59,41 +59,37 @@ describe('layer.Convolution.compareFilters()', () => {
 
       return eval(`(${result})`);
     }
-    function getBrainConvolutionLayerCompareFilters(settings) {
-      const target = 'sum += input * deltas[this.constants.deltaZ][deltaY][deltaX]';
-      const compareFiltersString = compareFilters.toString();
-      if (compareFiltersString.indexOf(target) < 0) {
+    function getBrainConvolutionLayerCompareInputDeltas(settings) {
+      const target = 'sum += filters[this.thread.z][filterY][filterX] * deltas[this.constants.deltaZ][deltaX][deltaY];';
+      const compareInputDeltasString = compareInputDeltas.toString();
+      if (compareInputDeltasString.indexOf(target) < 0) {
         throw new Error(`function injection target of "${target}" cannot be found`);
       }
-      const compareFiltersInjectedString = compareFiltersString
+      const compareInputDeltasInjectedString = compareInputDeltasString
         .replace(target, target + `\nthis.constants.callback({
-          inputX: inputX,
-          inputY: inputY,
-          inputZ: this.thread.z,
-          deltaX: deltaX,
-          deltaY: deltaY,
+          filterX: filterY,
+          filterY: filterX,
+          filterZ: 0,
+          deltaX: deltaY,
+          deltaY: deltaX,
           deltaZ: this.constants.deltaZ,
-          filterX: this.thread.x,
-          filterY: this.thread.y,
-          filterZ: this.thread.z
+          inputDeltaX: this.thread.x,
+          inputDeltaY: this.thread.y,
+          inputDeltaZ: this.thread.z
         })\n`);
-      const compareFiltersInjected = eval(`(${compareFiltersInjectedString})`);
+      const compareInputDeltasInjected = eval(`(${compareInputDeltasInjectedString})`);
 
-      const filterDeltas = utils.fillPlusPlus(settings.filterWidth, settings.filterHeight, settings.input.depth);
-      const inputs = utils.fillPlusPlus(settings.input.width, settings.input.height, settings.input.depth);
+      const inputDeltas = utils.fillPlusPlus(settings.input.width, settings.input.height, settings.input.depth);
+      const filters = utils.fillPlusPlus(settings.filterWidth, settings.filterHeight, settings.input.depth);
       const deltas = utils.fillPlusPlus(settings.width, settings.height, settings.depth);
 
       const stride = Math.max(settings.stride || 0, 1);
       const padding = Math.max(settings.padding || 0, 0);
-      const paddedInputWidth = settings.input.width + padding;
-      const paddedInputHeight = settings.input.height + padding;
-      const slideWidth = Math.min(settings.width, paddedInputWidth);
-      const slideHeight = Math.min(settings.height, paddedInputHeight);
 
       const output = [];
       for (let i = 0; i < settings.depth; i++) {
-        output.push(gpuMock(compareFiltersInjected, {
-          output: [settings.filterWidth, settings.filterHeight, settings.input.depth],
+        output.push(gpuMock(compareInputDeltasInjected, {
+          output: [settings.input.width, settings.input.height, settings.input.depth],
           constants: {
             strideX: stride,
             strideY: stride,
@@ -107,36 +103,35 @@ describe('layer.Convolution.compareFilters()', () => {
             deltaHeight: settings.height,
             deltaDepth: settings.depth,
             callback: settings.callback,
-            deltaZ: i,
-            slideWidth: slideWidth,
-            slideHeight: slideHeight
+            deltaZ: i
           }
-        })(filterDeltas, inputs, deltas));
+        })(inputDeltas, filters, deltas));
       }
       return output;
     }
     function setupLogs(settings) {
-      const convnetMatrixLog = new MatrixLog('filters', settings.filterWidth, settings.filterHeight, settings.input.depth);
-      const brainMatrixLog = new MatrixLog('filters', settings.filterWidth, settings.filterHeight, settings.input.depth);
+      const convnetMatrixLog = new MatrixLog('inputDeltas', settings.input.width, settings.input.height, settings.input.depth);
+      const brainMatrixLog = new MatrixLog('inputDeltas', settings.input.width, settings.input.height, settings.input.depth);
       getConvNetConvLayerBackward().call(
         getConvNetConvLayerInstance(Object.assign({
           callback: (stats) => {
             if (stats.targets && stats.targets.join(',') === 'f.dw,V.dw') {
+
               convnetMatrixLog
                 .at({
-                  x: stats.fx,
-                  y: stats.fy,
+                  x: stats.oy,
+                  y: stats.ox,
                   z: stats.fd
                 });
 
               // in `backward` called in_act, V, or V.w
-              const inputsLog = {
-                name: 'inputs',
-                x: stats.ox,
-                y: stats.oy,
+              const filtersLog = {
+                name: 'filters',
+                x: stats.fx,
+                y: stats.fy,
                 z: stats.fd,
-                width: settings.input.width,
-                height: settings.input.height,
+                width: settings.filterWidth,
+                height: settings.filterHeight,
                 depth: settings.input.depth
               };
 
@@ -151,45 +146,46 @@ describe('layer.Convolution.compareFilters()', () => {
                 depth: settings.depth
               };
 
-              convnetMatrixLog.add(inputsLog);
+              convnetMatrixLog.add(filtersLog);
               convnetMatrixLog.add(deltasLog);
             }
           }
         }, settings)));
 
-      getBrainConvolutionLayerCompareFilters(Object.assign({
+      getBrainConvolutionLayerCompareInputDeltas(Object.assign({
         callback: (stats) => {
-          if (stats.filterX < 0) throw new Error('filterX less than 0');
-          if (stats.filterX > settings.filterWidth) throw new Error(`filterX greater than ${settings.filterWidth}`);
-          if (stats.filterY < 0) throw new Error('filterY less than 0');
-          if (stats.filterY > settings.filterHeight) throw new Error(`filterY greater than ${settings.filterHeight}`);
-
-          if (stats.deltaX < 0) throw new Error('deltaX less than 0');
-          if (stats.deltaX > settings.width) throw new Error(`deltaX greater than ${settings.width}`);
-          if (stats.deltaY < 0) throw new Error('deltaY less than 0');
-          if (stats.deltaY > settings.height) throw new Error(`deltaY greater than ${settings.height}`);
-
-          if (stats.inputX < 0) throw new Error('inputX less than 0');
-          if (stats.inputX > settings.input.width) throw new Error(`inputX greater than ${settings.input.width}`);
-          if (stats.inputY < 0) throw new Error('inputY less than 0');
-          if (stats.inputY > settings.input.height) throw new Error(`inputY greater than ${settings.input.height}`);
+          // if (stats.filterX < 0) throw new Error('filterX less than 0');
+          // if (stats.filterX > settings.filterWidth) throw new Error(`filterX greater than ${settings.filterWidth}`);
+          // if (stats.filterY < 0) throw new Error('filterY less than 0');
+          // if (stats.filterY > settings.filterHeight) throw new Error(`filterY greater than ${settings.filterHeight}`);
+          //
+          // if (stats.deltaX < 0) throw new Error('deltaX less than 0');
+          // if (stats.deltaX > settings.width) throw new Error(`deltaX greater than ${settings.width}`);
+          // if (stats.deltaY < 0) throw new Error('deltaY less than 0');
+          // if (stats.deltaY > settings.height) throw new Error(`deltaY greater than ${settings.height}`);
+          //
+          // if (stats.inputX < 0) throw new Error('inputX less than 0');
+          // if (stats.inputX > settings.input.width) throw new Error(`inputX greater than ${settings.input.width}`);
+          // if (stats.inputY < 0) throw new Error('inputY less than 0');
+          // if (stats.inputY > settings.input.height) throw new Error(`inputY greater than ${settings.input.height}`);
 
           brainMatrixLog
             .at({
-              x: stats.filterX,
-              y: stats.filterY,
-              z: stats.filterZ
+              x: stats.inputDeltaX,
+              y: stats.inputDeltaY,
+              z: stats.inputDeltaZ
             });
           brainMatrixLog
             .add({
-              name: 'inputs',
-              x: stats.inputX,
-              y: stats.inputY,
-              z: stats.inputZ,
-              width: settings.input.width,
-              height: settings.input.height,
+              name: 'filters',
+              x: stats.filterX,
+              y: stats.filterY,
+              z: stats.filterZ,
+              width: settings.filterWidth,
+              height: settings.filterHeight,
               depth: settings.input.depth
             });
+
           brainMatrixLog
             .add({
               name: 'deltas',
@@ -205,11 +201,11 @@ describe('layer.Convolution.compareFilters()', () => {
 
       return { convnetMatrixLog, brainMatrixLog };
     }
-    describe('from inputs', () => {
+    describe('from filters', () => {
       it('can backpropagate from a "4x4x1 input matrix" and a "1x1x1 output matrix" to a "2x2x1 filter matrix"', () => {
         const settings = {
-          width: 1,
-          height: 1,
+          width: 3,
+          height: 3,
           depth: 1,
           filterWidth: 2,
           filterHeight: 2,
@@ -221,36 +217,39 @@ describe('layer.Convolution.compareFilters()', () => {
         };
 
         const logs = setupLogs(settings);
-        const resultInputs = logs.brainMatrixLog.toString('inputs').split(/\n/g);
-        const expectedInputs = logs.convnetMatrixLog.toString('inputs').split(/\n/g);
+        write(logs);
+        const resultFilters = logs.brainMatrixLog.toString('filters').split(/\n/g);
+        const expectedFilters = logs.convnetMatrixLog.toString('filters').split(/\n/g);
         if (shortenResults) {
-          resultInputs.length = 200;
-          expectedInputs.length = 200;
+          resultFilters.length = 200;
+          expectedFilters.length = 200;
         }
-        expect(resultInputs).toEqual(expectedInputs);
+        expect(resultFilters).toEqual(expectedFilters);
       });
       it('can backpropagate from a "4x4x1 input matrix" and a "2x2x1 output matrix" to a "2x2x1 filter matrix"', () => {
         const settings = {
-          width: 2,
-          height: 2,
+          width: 12,
+          height: 12,
           depth: 1,
-          filterWidth: 2,
-          filterHeight: 2,
+          filterWidth: 6,
+          filterHeight: 6,
           input: {
-            width: 4,
-            height: 4,
+            width: 14,
+            height: 14,
             depth: 1,
           },
+          stride: 2,
+          padding: 2
         };
 
         const logs = setupLogs(settings);
-        const resultInputs = logs.brainMatrixLog.toString('inputs').split(/\n/g);
-        const expectedInputs = logs.convnetMatrixLog.toString('inputs').split(/\n/g);
+        const resultFilters = logs.brainMatrixLog.toString('filters').split(/\n/g);
+        const expectedFilters = logs.convnetMatrixLog.toString('filters').split(/\n/g);
         if (shortenResults) {
-          resultInputs.length = 200;
-          expectedInputs.length = 200;
+          resultFilters.length = 200;
+          expectedFilters.length = 200;
         }
-        expect(resultInputs).toEqual(expectedInputs);
+        expect(resultFilters).toEqual(expectedFilters);
       });
       it('can backpropagate from a "4x4x1 input matrix" and a "4x4x1 output matrix" to a "4x4x1 filter matrix"', () => {
         const settings = {
@@ -267,13 +266,13 @@ describe('layer.Convolution.compareFilters()', () => {
         };
 
         const logs = setupLogs(settings);
-        const resultInputs = logs.brainMatrixLog.toString('inputs').split(/\n/g);
-        const expectedInputs = logs.convnetMatrixLog.toString('inputs').split(/\n/g);
+        const resultFilters = logs.brainMatrixLog.toString('filters').split(/\n/g);
+        const expectedFilters = logs.convnetMatrixLog.toString('filters').split(/\n/g);
         if (shortenResults) {
-          resultInputs.length = 200;
-          expectedInputs.length = 200;
+          resultFilters.length = 200;
+          expectedFilters.length = 200;
         }
-        expect(resultInputs).toEqual(expectedInputs);
+        expect(resultFilters).toEqual(expectedFilters);
       });
       it('can backpropagate from a "6x6x8 input matrix" and a "24x24x8 output matrix" to a "10x10x8 filter matrix" with padding of 2 and stride of 2', () => {
         const settings = {
@@ -292,13 +291,13 @@ describe('layer.Convolution.compareFilters()', () => {
         };
 
         const logs = setupLogs(settings);
-        const resultInputs = logs.brainMatrixLog.toString('inputs').split(/\n/g);
-        const expectedInputs = logs.convnetMatrixLog.toString('inputs').split(/\n/g);
+        const resultFilters = logs.brainMatrixLog.toString('filters').split(/\n/g);
+        const expectedFilters = logs.convnetMatrixLog.toString('filters').split(/\n/g);
         if (shortenResults) {
-          resultInputs.length = 200;
-          expectedInputs.length = 200;
+          resultFilters.length = 200;
+          expectedFilters.length = 200;
         }
-        expect(resultInputs).toEqual(expectedInputs);
+        expect(resultFilters).toEqual(expectedFilters);
       });
       it('can backpropagate from a "12x12x8 input matrix" and a "24x24x8 output matrix" to a "5x5x8 filter matrix" with padding of 2', () => {
         const settings = {
@@ -313,17 +312,17 @@ describe('layer.Convolution.compareFilters()', () => {
             depth: 8,
           },
           padding: 2,
-          stride: 2
+          stride: 1
         };
 
         const logs = setupLogs(settings);
-        const resultInputs = logs.brainMatrixLog.toString('inputs').split(/\n/g);
-        const expectedInputs = logs.convnetMatrixLog.toString('inputs').split(/\n/g);
+        const resultFilters = logs.brainMatrixLog.toString('filters').split(/\n/g);
+        const expectedFilters = logs.convnetMatrixLog.toString('filters').split(/\n/g);
         if (shortenResults) {
-          resultInputs.length = 200;
-          expectedInputs.length = 200;
+          resultFilters.length = 200;
+          expectedFilters.length = 200;
         }
-        expect(resultInputs).toEqual(expectedInputs);
+        expect(resultFilters).toEqual(expectedFilters);
       });
       it('can backpropagate from a "24x24x1 input matrix" and a "24x24x8 output matrix" to a "5x5x1 filter matrix" with padding of 2', () => {
         const settings = {
@@ -341,13 +340,13 @@ describe('layer.Convolution.compareFilters()', () => {
         };
 
         const logs = setupLogs(settings);
-        const resultInputs = logs.brainMatrixLog.toString('inputs').split(/\n/g);
-        const expectedInputs = logs.convnetMatrixLog.toString('inputs').split(/\n/g);
+        const resultFilters = logs.brainMatrixLog.toString('filters').split(/\n/g);
+        const expectedFilters = logs.convnetMatrixLog.toString('filters').split(/\n/g);
         if (shortenResults) {
-          resultInputs.length = 200;
-          expectedInputs.length = 200;
+          resultFilters.length = 200;
+          expectedFilters.length = 200;
         }
-        expect(resultInputs).toEqual(expectedInputs);
+        expect(resultFilters).toEqual(expectedFilters);
       });
       it('can backpropagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix" with padding of 2', () => {
         const settings = {
@@ -365,13 +364,13 @@ describe('layer.Convolution.compareFilters()', () => {
         };
 
         const logs = setupLogs(settings);
-        const resultInputs = logs.brainMatrixLog.toString('inputs').split(/\n/g);
-        const expectedInputs = logs.convnetMatrixLog.toString('inputs').split(/\n/g);
+        const resultFilters = logs.brainMatrixLog.toString('filters').split(/\n/g);
+        const expectedFilters = logs.convnetMatrixLog.toString('filters').split(/\n/g);
         if (shortenResults) {
-          resultInputs.length = 200;
-          expectedInputs.length = 200;
+          resultFilters.length = 200;
+          expectedFilters.length = 200;
         }
-        expect(resultInputs).toEqual(expectedInputs);
+        expect(resultFilters).toEqual(expectedFilters);
       });
       it('can backpropagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix" with padding of 2 and stride of 2', () => {
         const settings = {
@@ -390,13 +389,13 @@ describe('layer.Convolution.compareFilters()', () => {
         };
 
         const logs = setupLogs(settings);
-        const resultInputs = logs.brainMatrixLog.toString('inputs').split(/\n/g);
-        const expectedInputs = logs.convnetMatrixLog.toString('inputs').split(/\n/g);
+        const resultFilters = logs.brainMatrixLog.toString('filters').split(/\n/g);
+        const expectedFilters = logs.convnetMatrixLog.toString('filters').split(/\n/g);
         if (shortenResults) {
-          resultInputs.length = 200;
-          expectedInputs.length = 200;
+          resultFilters.length = 200;
+          expectedFilters.length = 200;
         }
-        expect(resultInputs).toEqual(expectedInputs);
+        expect(resultFilters).toEqual(expectedFilters);
       });
     });
     describe('from deltas', () => {
@@ -417,6 +416,7 @@ describe('layer.Convolution.compareFilters()', () => {
         const logs = setupLogs(settings);
         const resultDeltas = logs.brainMatrixLog.toString('deltas').split(/\n/g);
         const expectedDeltas = logs.convnetMatrixLog.toString('deltas').split(/\n/g);
+
         if (shortenResults) {
           resultDeltas.length = 200;
           expectedDeltas.length = 200;
@@ -425,21 +425,24 @@ describe('layer.Convolution.compareFilters()', () => {
       });
       it('can backpropagate from a "4x4x1 input matrix" and a "2x2x1 output matrix" to a "2x2x1 filter matrix"', () => {
         const settings = {
-          width: 2,
-          height: 2,
+          width: 12,
+          height: 12,
           depth: 1,
-          filterWidth: 2,
-          filterHeight: 2,
+          filterWidth: 6,
+          filterHeight: 6,
           input: {
-            width: 4,
-            height: 4,
+            width: 14,
+            height: 14,
             depth: 1,
           },
+          stride: 2,
+          padding: 2
         };
 
         const logs = setupLogs(settings);
         const resultDeltas = logs.brainMatrixLog.toString('deltas').split(/\n/g);
         const expectedDeltas = logs.convnetMatrixLog.toString('deltas').split(/\n/g);
+
         if (shortenResults) {
           resultDeltas.length = 200;
           expectedDeltas.length = 200;
@@ -463,6 +466,7 @@ describe('layer.Convolution.compareFilters()', () => {
         const logs = setupLogs(settings);
         const resultDeltas = logs.brainMatrixLog.toString('deltas').split(/\n/g);
         const expectedDeltas = logs.convnetMatrixLog.toString('deltas').split(/\n/g);
+
         if (shortenResults) {
           resultDeltas.length = 200;
           expectedDeltas.length = 200;
@@ -488,6 +492,7 @@ describe('layer.Convolution.compareFilters()', () => {
         const logs = setupLogs(settings);
         const resultDeltas = logs.brainMatrixLog.toString('deltas').split(/\n/g);
         const expectedDeltas = logs.convnetMatrixLog.toString('deltas').split(/\n/g);
+
         if (shortenResults) {
           resultDeltas.length = 200;
           expectedDeltas.length = 200;
@@ -561,6 +566,11 @@ describe('layer.Convolution.compareFilters()', () => {
         const logs = setupLogs(settings);
         const resultDeltas = logs.brainMatrixLog.toString('deltas').split(/\n/g);
         const expectedDeltas = logs.convnetMatrixLog.toString('deltas').split(/\n/g);
+
+        // require('fs').writeFileSync('logs/deltas.log', logs.convnetMatrixLog.toString('deltas'));
+        // require('fs').writeFileSync('logs/filters.log', logs.convnetMatrixLog.toString('filters'));
+        // require('fs').writeFileSync('logs/deltas-new.log', logs.brainMatrixLog.toString('deltas'));
+
         if (shortenResults) {
           resultDeltas.length = 200;
           expectedDeltas.length = 200;
@@ -594,16 +604,12 @@ describe('layer.Convolution.compareFilters()', () => {
       });
     });
   });
-  describe('output', () => {
-    function setupCompareFilters(settings, deltaZ) {
+  describe.skip('output', () => {
+    function setupCompareInputDeltas(settings, deltaZ) {
       const stride = Math.max(settings.stride || 0, 1);
       const padding = Math.max(settings.padding || 0, 0);
-      const paddedInputWidth = settings.input.width + padding;
-      const paddedInputHeight = settings.input.height + padding;
-      const slideWidth = Math.min(settings.width, paddedInputWidth);
-      const slideHeight = Math.min(settings.height, paddedInputHeight);
 
-      return gpuMock(compareFilters, {
+      return gpuMock(compareInputDeltas, {
         output: [settings.filterWidth, settings.filterHeight, settings.input.depth],
         constants: {
           deltaZ: deltaZ,
@@ -617,9 +623,7 @@ describe('layer.Convolution.compareFilters()', () => {
           inputHeight: settings.input.height,
           deltaWidth: settings.width,
           deltaHeight: settings.height,
-          deltaDepth: settings.depth,
-          slideWidth: slideWidth,
-          slideHeight: slideHeight
+          deltaDepth: settings.depth
         }
       });
     }
@@ -638,7 +642,7 @@ describe('layer.Convolution.compareFilters()', () => {
 
       const compareFilters = [];
       for (let i = 0; i < settings.depth; i++) {
-        compareFilters.push(setupCompareFilters(settings, i));
+        compareFilters.push(setupCompareInputDeltas(settings, i));
       }
       convnet.ConvLayer.prototype.backward.call(convnetInstance);
       const expected = convnetInstance.filters.map(utils.volDWToArrays);
@@ -820,3 +824,11 @@ describe('layer.Convolution.compareFilters()', () => {
     });
   });
 });
+
+function write(logs) {
+  const fs = require('fs');
+  fs.writeFileSync('logs/deltas.log', logs.convnetMatrixLog.toString('deltas'));
+  fs.writeFileSync('logs/filters.log', logs.convnetMatrixLog.toString('filters'));
+  fs.writeFileSync('logs/deltas-new.log', logs.brainMatrixLog.toString('deltas'));
+  fs.writeFileSync('logs/filters-new.log', logs.brainMatrixLog.toString('filters'));
+}
