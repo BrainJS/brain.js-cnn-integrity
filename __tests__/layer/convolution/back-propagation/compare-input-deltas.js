@@ -4,7 +4,7 @@ const MatrixLog = require('matrix-log.js');
 const gpuMock = require('gpu-mock.js');
 const utils = require('../../../../utils');
 
-const shortenResults = true;
+const shortenResults = false;
 
 describe('layer.Convolution.compareInputDeltas()', () => {
   function getConvNetConvLayerInstance(settings) {
@@ -217,7 +217,6 @@ describe('layer.Convolution.compareInputDeltas()', () => {
         };
 
         const logs = setupLogs(settings);
-        write(logs);
         const resultFilters = logs.brainMatrixLog.toString('filters').split(/\n/g);
         const expectedFilters = logs.convnetMatrixLog.toString('filters').split(/\n/g);
         if (shortenResults) {
@@ -566,10 +565,6 @@ describe('layer.Convolution.compareInputDeltas()', () => {
         const logs = setupLogs(settings);
         const resultDeltas = logs.brainMatrixLog.toString('deltas').split(/\n/g);
         const expectedDeltas = logs.convnetMatrixLog.toString('deltas').split(/\n/g);
-
-        // require('fs').writeFileSync('logs/deltas.log', logs.convnetMatrixLog.toString('deltas'));
-        // require('fs').writeFileSync('logs/filters.log', logs.convnetMatrixLog.toString('filters'));
-        // require('fs').writeFileSync('logs/deltas-new.log', logs.brainMatrixLog.toString('deltas'));
 
         if (shortenResults) {
           resultDeltas.length = 200;

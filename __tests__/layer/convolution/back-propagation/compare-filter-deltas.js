@@ -85,10 +85,6 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
 
       const stride = Math.max(settings.stride || 0, 1);
       const padding = Math.max(settings.padding || 0, 0);
-      const paddedInputWidth = settings.input.width + padding;
-      const paddedInputHeight = settings.input.height + padding;
-      const slideWidth = Math.min(settings.width, paddedInputWidth);
-      const slideHeight = Math.min(settings.height, paddedInputHeight);
 
       const output = [];
       for (let i = 0; i < settings.depth; i++) {
@@ -107,9 +103,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
             deltaHeight: settings.height,
             deltaDepth: settings.depth,
             callback: settings.callback,
-            deltaZ: i,
-            slideWidth: slideWidth,
-            slideHeight: slideHeight
+            deltaZ: i
           }
         })(filterDeltas, inputs, deltas));
       }
@@ -601,10 +595,6 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
     function setupCompareFilterDeltas(settings, deltaZ) {
       const stride = Math.max(settings.stride || 0, 1);
       const padding = Math.max(settings.padding || 0, 0);
-      const paddedInputWidth = settings.input.width + padding;
-      const paddedInputHeight = settings.input.height + padding;
-      const slideWidth = Math.min(settings.width, paddedInputWidth);
-      const slideHeight = Math.min(settings.height, paddedInputHeight);
 
       return gpuMock(compareFilterDeltas, {
         output: [settings.filterWidth, settings.filterHeight, settings.input.depth],
@@ -620,9 +610,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
           inputHeight: settings.input.height,
           deltaWidth: settings.width,
           deltaHeight: settings.height,
-          deltaDepth: settings.depth,
-          slideWidth: slideWidth,
-          slideHeight: slideHeight
+          deltaDepth: settings.depth
         }
       });
     }
