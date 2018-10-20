@@ -38,7 +38,6 @@ describe('layer.Convolution.compareInputDeltas()', () => {
   describe('algorithm shape', () => {
     function getConvNetConvLayerBackward() {
       const value = `this.callback({
-        targets: ['f.dw', 'V.dw'],
         x, y, d,
         ox, oy,
         fx, fy, fd,
@@ -60,7 +59,7 @@ describe('layer.Convolution.compareInputDeltas()', () => {
       return eval(`(${result})`);
     }
     function getBrainConvolutionLayerCompareInputDeltas(settings) {
-      const target = 'sum += filters[this.thread.z][filterY][filterX] * deltas[this.constants.deltaZ][deltaX][deltaY];';
+      const target = 'sum += filters[this.thread.z][filterY][filterX] * deltas[this.constants.deltaZ][deltaY][deltaX];';
       const compareInputDeltasString = compareInputDeltas.toString();
       if (compareInputDeltasString.indexOf(target) < 0) {
         throw new Error(`function injection target of "${target}" cannot be found`);
@@ -69,7 +68,7 @@ describe('layer.Convolution.compareInputDeltas()', () => {
         .replace(target, target + `\nthis.constants.callback({
           filterX: filterY,
           filterY: filterX,
-          filterZ: 0,
+          filterZ: this.thread.z,
           deltaX: deltaY,
           deltaY: deltaX,
           deltaZ: this.constants.deltaZ,
@@ -115,59 +114,56 @@ describe('layer.Convolution.compareInputDeltas()', () => {
       getConvNetConvLayerBackward().call(
         getConvNetConvLayerInstance(Object.assign({
           callback: (stats) => {
-            if (stats.targets && stats.targets.join(',') === 'f.dw,V.dw') {
+            convnetMatrixLog
+              .at({
+                x: stats.oy,
+                y: stats.ox,
+                z: stats.fd
+              });
 
-              convnetMatrixLog
-                .at({
-                  x: stats.oy,
-                  y: stats.ox,
-                  z: stats.fd
-                });
+            // in `backward` called in_act, V, or V.w
+            const filtersLog = {
+              name: 'filters',
+              x: stats.fx,
+              y: stats.fy,
+              z: stats.fd,
+              width: settings.filterWidth,
+              height: settings.filterHeight,
+              depth: settings.input.depth
+            };
 
-              // in `backward` called in_act, V, or V.w
-              const filtersLog = {
-                name: 'filters',
-                x: stats.fx,
-                y: stats.fy,
-                z: stats.fd,
-                width: settings.filterWidth,
-                height: settings.filterHeight,
-                depth: settings.input.depth
-              };
+            // in `backward` called out_act, or chain_grad
+            const deltasLog = {
+              name: 'deltas',
+              x: stats.ax,
+              y: stats.ay,
+              z: stats.d,
+              width: settings.width,
+              height: settings.height,
+              depth: settings.depth
+            };
 
-              // in `backward` called out_act, or chain_grad
-              const deltasLog = {
-                name: 'deltas',
-                x: stats.ax,
-                y: stats.ay,
-                z: stats.d,
-                width: settings.width,
-                height: settings.height,
-                depth: settings.depth
-              };
-
-              convnetMatrixLog.add(filtersLog);
-              convnetMatrixLog.add(deltasLog);
-            }
+            convnetMatrixLog.add(filtersLog);
+            convnetMatrixLog.add(deltasLog);
           }
         }, settings)));
 
       getBrainConvolutionLayerCompareInputDeltas(Object.assign({
         callback: (stats) => {
-          // if (stats.filterX < 0) throw new Error('filterX less than 0');
-          // if (stats.filterX > settings.filterWidth) throw new Error(`filterX greater than ${settings.filterWidth}`);
-          // if (stats.filterY < 0) throw new Error('filterY less than 0');
-          // if (stats.filterY > settings.filterHeight) throw new Error(`filterY greater than ${settings.filterHeight}`);
-          //
-          // if (stats.deltaX < 0) throw new Error('deltaX less than 0');
-          // if (stats.deltaX > settings.width) throw new Error(`deltaX greater than ${settings.width}`);
-          // if (stats.deltaY < 0) throw new Error('deltaY less than 0');
-          // if (stats.deltaY > settings.height) throw new Error(`deltaY greater than ${settings.height}`);
-          //
-          // if (stats.inputX < 0) throw new Error('inputX less than 0');
-          // if (stats.inputX > settings.input.width) throw new Error(`inputX greater than ${settings.input.width}`);
-          // if (stats.inputY < 0) throw new Error('inputY less than 0');
-          // if (stats.inputY > settings.input.height) throw new Error(`inputY greater than ${settings.input.height}`);
+          if (stats.filterX < 0) throw new Error('filterX less than 0');
+          if (stats.filterX > settings.filterWidth) throw new Error(`filterX greater than ${settings.filterWidth}`);
+          if (stats.filterY < 0) throw new Error('filterY less than 0');
+          if (stats.filterY > settings.filterHeight) throw new Error(`filterY greater than ${settings.filterHeight}`);
+
+          if (stats.deltaX < 0) throw new Error('deltaX less than 0');
+          if (stats.deltaX > settings.width) throw new Error(`deltaX greater than ${settings.width}`);
+          if (stats.deltaY < 0) throw new Error('deltaY less than 0');
+          if (stats.deltaY > settings.height) throw new Error(`deltaY greater than ${settings.height}`);
+
+          if (stats.inputX < 0) throw new Error('inputX less than 0');
+          if (stats.inputX > settings.input.width) throw new Error(`inputX greater than ${settings.input.width}`);
+          if (stats.inputY < 0) throw new Error('inputY less than 0');
+          if (stats.inputY > settings.input.height) throw new Error(`inputY greater than ${settings.input.height}`);
 
           brainMatrixLog
             .at({
@@ -202,7 +198,7 @@ describe('layer.Convolution.compareInputDeltas()', () => {
       return { convnetMatrixLog, brainMatrixLog };
     }
     describe('from filters', () => {
-      it('can backpropagate from a "4x4x1 input matrix" and a "1x1x1 output matrix" to a "2x2x1 filter matrix"', () => {
+      it('can backpropagate from a "4x4x1 input matrix" and a "3x3x1 output matrix" to a "2x2x1 filter matrix"', () => {
         const settings = {
           width: 3,
           height: 3,
@@ -398,10 +394,10 @@ describe('layer.Convolution.compareInputDeltas()', () => {
       });
     });
     describe('from deltas', () => {
-      it('can backpropagate from a "4x4x1 input matrix" and a "1x1x1 output matrix" to a "2x2x1 filter matrix"', () => {
+      it('can backpropagate from a "4x4x1 input matrix" and a "3x3x1 output matrix" to a "2x2x1 filter matrix"', () => {
         const settings = {
-          width: 1,
-          height: 1,
+          width: 3,
+          height: 3,
           depth: 1,
           filterWidth: 2,
           filterHeight: 2,
@@ -599,13 +595,13 @@ describe('layer.Convolution.compareInputDeltas()', () => {
       });
     });
   });
-  describe.skip('output', () => {
+  describe('output', () => {
     function setupCompareInputDeltas(settings, deltaZ) {
       const stride = Math.max(settings.stride || 0, 1);
       const padding = Math.max(settings.padding || 0, 0);
 
       return gpuMock(compareInputDeltas, {
-        output: [settings.filterWidth, settings.filterHeight, settings.input.depth],
+        output: [settings.input.width, settings.input.height, settings.input.depth],
         constants: {
           deltaZ: deltaZ,
           strideX: stride,
@@ -624,35 +620,35 @@ describe('layer.Convolution.compareInputDeltas()', () => {
     }
     function setupOutputs(settings) {
       const convnetInstance = getConvNetConvLayerInstance(settings);
-      const filterDeltas = utils.fillPlusPlus(settings.filterWidth, settings.filterHeight, settings.input.depth);
-      const inputs = utils.fillPlusPlus(settings.input.width, settings.input.height, settings.input.depth);
+      let inputDeltas = utils.fillZeros(settings.input.width, settings.input.height, settings.input.depth);
+      const filters = utils.fillPlusPlus(settings.filterWidth, settings.filterHeight, settings.input.depth);
       const deltas = utils.fillPlusPlus(settings.width, settings.height, settings.depth);
 
       for (let i = 0; i < settings.input.depth; i++) {
-        expect(filterDeltas).toEqual(utils.volDWToArrays(convnetInstance.filters[i]));
+        expect(filters).toEqual(utils.volWToArrays(convnetInstance.filters[i]));
       }
 
-      expect(inputs).toEqual(utils.volWToArrays(convnetInstance.in_act));
+      // expect(inputDeltas).toEqual(utils.volDWToArrays(convnetInstance.in_act));
       expect(deltas).toEqual((utils.volDWToArrays(convnetInstance.out_act)));
 
-      const compareFilters = [];
+      const compareInputDeltas = [];
       for (let i = 0; i < settings.depth; i++) {
-        compareFilters.push(setupCompareInputDeltas(settings, i));
+        compareInputDeltas.push(setupCompareInputDeltas(settings, i));
       }
       convnet.ConvLayer.prototype.backward.call(convnetInstance);
-      const expected = convnetInstance.filters.map(utils.volDWToArrays);
-      const result = [];
+      const expected = utils.volDWToArrays(convnetInstance.in_act);
       for (let i = 0; i < settings.depth; i++) {
-        result.push(compareFilters[i](filterDeltas, inputs, deltas));
+        inputDeltas = compareInputDeltas[i](inputDeltas, filters, deltas);
       }
+      const result = inputDeltas;
       return {
         expected, result
       }
     }
-    it('can backpropagate from a "4x4x1 input matrix" and a "1x1x1 output matrix" to a "2x2x1 filter matrix"', () => {
+    it('can backpropagate from a "4x4x1 input matrix" and a "3x3x1 output matrix" to a "2x2x1 filter matrix"', () => {
       const settings = {
-        width: 1,
-        height: 1,
+        width: 3,
+        height: 3,
         depth: 1,
         filterWidth: 2,
         filterHeight: 2,
@@ -769,9 +765,6 @@ describe('layer.Convolution.compareInputDeltas()', () => {
       };
 
       const { result, expected } = setupOutputs(settings);
-
-      expect(expected.length).toBe(settings.depth);
-      expect(result.length).toBe(settings.depth);
       expect(result).toEqual(expected);
     });
     it('can backpropagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix" with padding of 2', () => {
@@ -790,9 +783,6 @@ describe('layer.Convolution.compareInputDeltas()', () => {
       };
 
       const { result, expected } = setupOutputs(settings);
-
-      expect(expected.length).toBe(settings.depth);
-      expect(result.length).toBe(settings.depth);
       expect(result).toEqual(expected);
     });
     it('can backpropagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix" with padding of 2 and stride of 2', () => {
@@ -812,9 +802,6 @@ describe('layer.Convolution.compareInputDeltas()', () => {
       };
 
       const { result, expected } = setupOutputs(settings);
-
-      expect(expected.length).toBe(settings.depth);
-      expect(result.length).toBe(settings.depth);
       expect(result).toEqual(expected);
     });
   });

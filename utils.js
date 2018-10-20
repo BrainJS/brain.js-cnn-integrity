@@ -2,7 +2,6 @@ const convnet = require('convnetjs');
 
 function fillZeros(width, height, depth) {
   const result = [];
-  let i = 1;
   for (let z = 0; z < depth; z++) {
     const rows = [];
     for (let y = 0; y < height; y++) {

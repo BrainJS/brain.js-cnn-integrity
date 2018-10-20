@@ -38,7 +38,6 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
   describe('algorithm shape', () => {
     function getConvNetConvLayerBackward() {
       const value = `this.callback({
-        targets: ['f.dw', 'V.dw'],
         x, y, d,
         ox, oy,
         fx, fy, fd,
@@ -115,39 +114,37 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
       getConvNetConvLayerBackward().call(
         getConvNetConvLayerInstance(Object.assign({
           callback: (stats) => {
-            if (stats.targets && stats.targets.join(',') === 'f.dw,V.dw') {
-              convnetMatrixLog
-                .at({
-                  x: stats.fx,
-                  y: stats.fy,
-                  z: stats.fd
-                });
+            convnetMatrixLog
+              .at({
+                x: stats.fx,
+                y: stats.fy,
+                z: stats.fd
+              });
 
-              // in `backward` called in_act, V, or V.w
-              const inputsLog = {
-                name: 'inputs',
-                x: stats.ox,
-                y: stats.oy,
-                z: stats.fd,
-                width: settings.input.width,
-                height: settings.input.height,
-                depth: settings.input.depth
-              };
+            // in `backward` called in_act, V, or V.w
+            const inputsLog = {
+              name: 'inputs',
+              x: stats.ox,
+              y: stats.oy,
+              z: stats.fd,
+              width: settings.input.width,
+              height: settings.input.height,
+              depth: settings.input.depth
+            };
 
-              // in `backward` called out_act, or chain_grad
-              const deltasLog = {
-                name: 'deltas',
-                x: stats.ax,
-                y: stats.ay,
-                z: stats.d,
-                width: settings.width,
-                height: settings.height,
-                depth: settings.depth
-              };
+            // in `backward` called out_act, or chain_grad
+            const deltasLog = {
+              name: 'deltas',
+              x: stats.ax,
+              y: stats.ay,
+              z: stats.d,
+              width: settings.width,
+              height: settings.height,
+              depth: settings.depth
+            };
 
-              convnetMatrixLog.add(inputsLog);
-              convnetMatrixLog.add(deltasLog);
-            }
+            convnetMatrixLog.add(inputsLog);
+            convnetMatrixLog.add(deltasLog);
           }
         }, settings)));
 
@@ -200,10 +197,10 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
       return { convnetMatrixLog, brainMatrixLog };
     }
     describe('from inputs', () => {
-      it('can backpropagate from a "4x4x1 input matrix" and a "1x1x1 output matrix" to a "2x2x1 filter matrix"', () => {
+      it('can backpropagate from a "4x4x1 input matrix" and a "3x3x1 output matrix" to a "2x2x1 filter matrix"', () => {
         const settings = {
-          width: 1,
-          height: 1,
+          width: 3,
+          height: 3,
           depth: 1,
           filterWidth: 2,
           filterHeight: 2,
@@ -397,10 +394,10 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
       });
     });
     describe('from deltas', () => {
-      it('can backpropagate from a "4x4x1 input matrix" and a "1x1x1 output matrix" to a "2x2x1 filter matrix"', () => {
+      it('can backpropagate from a "4x4x1 input matrix" and a "3x3x1 output matrix" to a "2x2x1 filter matrix"', () => {
         const settings = {
-          width: 1,
-          height: 1,
+          width: 3,
+          height: 3,
           depth: 1,
           filterWidth: 2,
           filterHeight: 2,

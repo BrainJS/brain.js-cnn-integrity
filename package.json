@@ -21,6 +21,6 @@
     "convnetjs": "^0.3.0",
     "gpu-mock.js": "^1.0.1",
     "jest": "^23.5.0",
-    "matrix-log.js": "^1.2.3"
+    "matrix-log.js": "^1.4.0"
   }
 }

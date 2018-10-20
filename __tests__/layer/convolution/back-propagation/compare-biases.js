@@ -137,10 +137,10 @@ describe('layer.Convolution.compareBiases()', () => {
       return { convnetMatrixLog, brainMatrixLog };
     }
 
-    it('can backpropagate from a "4x4x1 input matrix" and a "1x1x1 output matrix" to a "2x2x1 filter matrix"', () => {
+    it('can backpropagate from a "4x4x1 input matrix" and a "3x3x1 output matrix" to a "2x2x1 filter matrix"', () => {
       const settings = {
-        width: 1,
-        height: 1,
+        width: 3,
+        height: 3,
         depth: 1,
         filterWidth: 2,
         filterHeight: 2,
@@ -373,10 +373,10 @@ describe('layer.Convolution.compareBiases()', () => {
         expected, result
       }
     }
-    it('can backpropagate from a "4x4x1 input matrix" and a "1x1x1 output matrix" to a "2x2x1 filter matrix"', () => {
+    it('can backpropagate from a "4x4x1 input matrix" and a "3x3x1 output matrix" to a "2x2x1 filter matrix"', () => {
       const settings = {
-        width: 1,
-        height: 1,
+        width: 3,
+        height: 3,
         depth: 1,
         filterWidth: 2,
         filterHeight: 2,
