@@ -381,7 +381,7 @@ braces@^2.3.1:
 
 "brain.js@github:brainjs/brain.js#develop":
   version "2.0.0"
-  resolved "https://codeload.github.com/brainjs/brain.js/tar.gz/8b1e707d81c65d50b7f8644b9514854e41fdd06c"
+  resolved "https://codeload.github.com/brainjs/brain.js/tar.gz/4c5dff10e699e97763c502a3b5c3be3dff460621"
   dependencies:
     gpu.js "^1.5.5"
     thaw.js "^2.0.0"

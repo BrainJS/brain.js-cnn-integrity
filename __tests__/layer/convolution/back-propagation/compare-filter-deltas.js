@@ -197,7 +197,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
       return { convnetMatrixLog, brainMatrixLog };
     }
     describe('from inputs', () => {
-      it('can backpropagate from a "4x4x1 input matrix" and a "3x3x1 output matrix" to a "2x2x1 filter matrix"', () => {
+      it('can back propagate from a "4x4x1 input matrix" and a "3x3x1 output matrix" to a "2x2x1 filter matrix"', () => {
         const settings = {
           width: 3,
           height: 3,
@@ -220,7 +220,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
         }
         expect(resultInputs).toEqual(expectedInputs);
       });
-      it('can backpropagate from a "4x4x1 input matrix" and a "3x3x1 output matrix" to a "2x2x1 filter matrix"', () => {
+      it('can back propagate from a "4x4x1 input matrix" and a "3x3x1 output matrix" to a "2x2x1 filter matrix"', () => {
         // output should always be the input size + (padding * 2) - filter size + 1
         const settings = {
           width: 3,
@@ -246,7 +246,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
         }
         expect(resultInputs).toEqual(expectedInputs);
       });
-      it('can backpropagate from a "4x4x1 input matrix" and a "4x4x1 output matrix" to a "4x4x1 filter matrix"', () => {
+      it('can back propagate from a "4x4x1 input matrix" and a "4x4x1 output matrix" to a "4x4x1 filter matrix"', () => {
         const settings = {
           width: 4,
           height: 4,
@@ -269,7 +269,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
         }
         expect(resultInputs).toEqual(expectedInputs);
       });
-      it('can backpropagate from a "6x6x8 input matrix" and a "24x24x8 output matrix" to a "10x10x8 filter matrix" with padding of 2 and stride of 2', () => {
+      it('can back propagate from a "6x6x8 input matrix" and a "24x24x8 output matrix" to a "10x10x8 filter matrix" with padding of 2 and stride of 2', () => {
         const settings = {
           width: 24,
           height: 24,
@@ -294,7 +294,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
         }
         expect(resultInputs).toEqual(expectedInputs);
       });
-      it('can backpropagate from a "12x12x8 input matrix" and a "24x24x8 output matrix" to a "5x5x8 filter matrix" with padding of 2', () => {
+      it('can back propagate from a "12x12x8 input matrix" and a "24x24x8 output matrix" to a "5x5x8 filter matrix" with padding of 2', () => {
         const settings = {
           width: 6,
           height: 6,
@@ -319,7 +319,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
         }
         expect(resultInputs).toEqual(expectedInputs);
       });
-      it('can backpropagate from a "24x24x1 input matrix" and a "24x24x8 output matrix" to a "5x5x1 filter matrix" with padding of 2', () => {
+      it('can back propagate from a "24x24x1 input matrix" and a "24x24x8 output matrix" to a "5x5x1 filter matrix" with padding of 2', () => {
         const settings = {
           width: 24,
           height: 24,
@@ -343,7 +343,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
         }
         expect(resultInputs).toEqual(expectedInputs);
       });
-      it('can backpropagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix" with padding of 2', () => {
+      it('can back propagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix" with padding of 2', () => {
         const settings = {
           width: 12,
           height: 12,
@@ -367,7 +367,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
         }
         expect(resultInputs).toEqual(expectedInputs);
       });
-      it('can backpropagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix" with padding of 2 and stride of 2', () => {
+      it('can back propagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix" with padding of 2 and stride of 2', () => {
         const settings = {
           width: 12,
           height: 12,
@@ -394,7 +394,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
       });
     });
     describe('from deltas', () => {
-      it('can backpropagate from a "4x4x1 input matrix" and a "3x3x1 output matrix" to a "2x2x1 filter matrix"', () => {
+      it('can back propagate from a "4x4x1 input matrix" and a "3x3x1 output matrix" to a "2x2x1 filter matrix"', () => {
         const settings = {
           width: 3,
           height: 3,
@@ -417,7 +417,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
         }
         expect(resultDeltas).toEqual(expectedDeltas);
       });
-      it('can backpropagate from a "4x4x1 input matrix" and a "2x2x1 output matrix" to a "2x2x1 filter matrix"', () => {
+      it('can back propagate from a "4x4x1 input matrix" and a "2x2x1 output matrix" to a "2x2x1 filter matrix"', () => {
         const settings = {
           width: 2,
           height: 2,
@@ -440,7 +440,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
         }
         expect(resultDeltas).toEqual(expectedDeltas);
       });
-      it('can backpropagate from a "4x4x1 input matrix" and a "4x4x1 output matrix" to a "4x4x1 filter matrix"', () => {
+      it('can back propagate from a "4x4x1 input matrix" and a "4x4x1 output matrix" to a "4x4x1 filter matrix"', () => {
         const settings = {
           width: 4,
           height: 4,
@@ -463,7 +463,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
         }
         expect(resultDeltas).toEqual(expectedDeltas);
       });
-      it('can backpropagate from a "6x6x8 input matrix" and a "24x24x8 output matrix" to a "5x5x8 filter matrix" with padding of 2 and stride of 2', () => {
+      it('can back propagate from a "6x6x8 input matrix" and a "24x24x8 output matrix" to a "5x5x8 filter matrix" with padding of 2 and stride of 2', () => {
         const settings = {
           width: 24,
           height: 24,
@@ -488,7 +488,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
         }
         expect(resultDeltas).toEqual(expectedDeltas);
       });
-      it('can backpropagate from a "12x12x8 input matrix" and a "24x24x8 output matrix" to a "5x5x8 filter matrix" with padding of 2', () => {
+      it('can back propagate from a "12x12x8 input matrix" and a "24x24x8 output matrix" to a "5x5x8 filter matrix" with padding of 2', () => {
         const settings = {
           width: 24,
           height: 24,
@@ -513,7 +513,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
         }
         expect(resultDeltas).toEqual(expectedDeltas);
       });
-      it('can backpropagate from a "24x24x1 input matrix" and a "24x24x8 output matrix" to a "5x5x1 filter matrix" with padding of 2', () => {
+      it('can back propagate from a "24x24x1 input matrix" and a "24x24x8 output matrix" to a "5x5x1 filter matrix" with padding of 2', () => {
         const settings = {
           width: 24,
           height: 24,
@@ -537,7 +537,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
         }
         expect(resultDeltas).toEqual(expectedDeltas);
       });
-      it('can backpropagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix" with padding of 2', () => {
+      it('can back propagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix" with padding of 2', () => {
         const settings = {
           width: 12,
           height: 12,
@@ -561,7 +561,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
         }
         expect(resultDeltas).toEqual(expectedDeltas);
       });
-      it('can backpropagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix" with padding of 2 and stride of 2', () => {
+      it('can back propagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix" with padding of 2 and stride of 2', () => {
         const settings = {
           width: 12,
           height: 12,
@@ -638,7 +638,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
         expected, result
       }
     }
-    it('can backpropagate from a "4x4x1 input matrix" and a "1x1x1 output matrix" to a "2x2x1 filter matrix"', () => {
+    it('can back propagate from a "4x4x1 input matrix" and a "1x1x1 output matrix" to a "2x2x1 filter matrix"', () => {
       const settings = {
         width: 1,
         height: 1,
@@ -658,7 +658,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
       expect(result.length).toBe(settings.depth);
       expect(result).toEqual(expected);
     });
-    it('can backpropagate from a "4x4x1 input matrix" and a "2x2x1 output matrix" to a "2x2x1 filter matrix"', () => {
+    it('can back propagate from a "4x4x1 input matrix" and a "2x2x1 output matrix" to a "2x2x1 filter matrix"', () => {
       const settings = {
         width: 2,
         height: 2,
@@ -678,7 +678,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
       expect(result.length).toBe(settings.depth);
       expect(result).toEqual(expected);
     });
-    it('can backpropagate from a "4x4x1 input matrix" and a "4x4x1 output matrix" to a "4x4x1 filter matrix"', () => {
+    it('can back propagate from a "4x4x1 input matrix" and a "4x4x1 output matrix" to a "4x4x1 filter matrix"', () => {
       const settings = {
         width: 4,
         height: 4,
@@ -698,7 +698,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
       expect(result.length).toBe(settings.depth);
       expect(result).toEqual(expected);
     });
-    it('can backpropagate from a "6x6x8 input matrix" and a "24x24x8 output matrix" to a "5x5x8 filter matrix" with padding of 2 and stride of 2', () => {
+    it('can back propagate from a "6x6x8 input matrix" and a "24x24x8 output matrix" to a "5x5x8 filter matrix" with padding of 2 and stride of 2', () => {
       const settings = {
         width: 24,
         height: 24,
@@ -720,7 +720,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
       expect(result.length).toBe(settings.depth);
       expect(result).toEqual(expected);
     });
-    it('can backpropagate from a "12x12x8 input matrix" and a "24x24x8 output matrix" to a "5x5x8 filter matrix" with padding of 2', () => {
+    it('can back propagate from a "12x12x8 input matrix" and a "24x24x8 output matrix" to a "5x5x8 filter matrix" with padding of 2', () => {
       const settings = {
         width: 24,
         height: 24,
@@ -742,7 +742,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
       expect(result.length).toBe(settings.depth);
       expect(result).toEqual(expected);
     });
-    it('can backpropagate from a "24x24x1 input matrix" and a "24x24x8 output matrix" to a "5x5x1 filter matrix" with padding of 2', () => {
+    it('can back propagate from a "24x24x1 input matrix" and a "24x24x8 output matrix" to a "5x5x1 filter matrix" with padding of 2', () => {
       const settings = {
         width: 24,
         height: 24,
@@ -763,7 +763,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
       expect(result.length).toBe(settings.depth);
       expect(result).toEqual(expected);
     });
-    it('can backpropagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix" with padding of 2', () => {
+    it('can back propagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix" with padding of 2', () => {
       const settings = {
         width: 12,
         height: 12,
@@ -784,7 +784,7 @@ describe('layer.Convolution.compareFilterDeltas()', () => {
       expect(result.length).toBe(settings.depth);
       expect(result).toEqual(expected);
     });
-    it('can backpropagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix" with padding of 2 and stride of 2', () => {
+    it('can back propagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix" with padding of 2 and stride of 2', () => {
       const settings = {
         width: 12,
         height: 12,

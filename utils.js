@@ -1,5 +1,12 @@
 const convnet = require('convnetjs');
 
+function fnClassToString(className, cl) {
+  return `var ${ className } = ${ cl.toString() };
+  ${className}.prototype = {
+    ${Object.keys(cl.prototype).map((methodName) => `${methodName}: ${ cl.prototype[methodName].toString()}`).join(',\n')}
+  };`;
+}
+
 function fillZeros(width, height, depth) {
   const result = [];
   for (let z = 0; z < depth; z++) {
@@ -19,6 +26,22 @@ function fillZeros(width, height, depth) {
 function fillPlusPlus(width, height, depth) {
   const result = [];
   let i = 1;
+  if (typeof depth === 'undefined') {
+    if (typeof height === 'undefined') {
+      for (let x = 0; x < width; x++) {
+        result.push(i++);
+      }
+      return result;
+    }
+    for (let y = 0; y < height; y++) {
+      const columns = [];
+      for (let x = 0; x < width; x++) {
+        columns.push(i++);
+      }
+      result.push(columns);
+    }
+    return result;
+  }
   for (let z = 0; z < depth; z++) {
     const rows = [];
     for (let y = 0; y < height; y++) {
@@ -83,6 +106,7 @@ function volDWToArrays(vol) {
 }
 
 module.exports = {
+  fnClassToString,
   fillZeros,
   fillPlusPlus,
   fillPlusPlusVol,
