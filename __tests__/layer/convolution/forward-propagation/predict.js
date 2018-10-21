@@ -333,7 +333,6 @@ describe('layer.Convolution.predict()', () => {
         };
 
         const logs = setupLogs(settings);
-        write(logs);
         const resultFilters = logs.brainMatrixLog.toString('filters').split(/\n/g);
         const expectedFilters = logs.convnetMatrixLog.toString('filters').split(/\n/g);
         if (shortenResults) {

@@ -628,7 +628,6 @@ describe('layer.Convolution.compareInputDeltas()', () => {
         expect(filters).toEqual(utils.volWToArrays(convnetInstance.filters[i]));
       }
 
-      // expect(inputDeltas).toEqual(utils.volDWToArrays(convnetInstance.in_act));
       expect(deltas).toEqual((utils.volDWToArrays(convnetInstance.out_act)));
 
       const compareInputDeltas = [];
