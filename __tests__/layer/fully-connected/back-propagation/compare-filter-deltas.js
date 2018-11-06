@@ -119,15 +119,15 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
 
       getBrainConvolutionLayerCompareFilterDeltas(Object.assign({
         callback: (stats) => {
-          // if (stats.filterX < 0) throw new Error('filterX less than 0');
-          // if (stats.filterX > settings.filterWidth) throw new Error(`filterX greater than ${settings.filterWidth}`);
-          // if (stats.filterY < 0) throw new Error('filterY less than 0');
-          // if (stats.filterY > settings.filterHeight) throw new Error(`filterY greater than ${settings.filterHeight}`);
+          if (stats.filterX < 0) throw new Error('filterX less than 0');
+          if (stats.filterX > settings.filterWidth) throw new Error(`filterX greater than ${settings.filterWidth}`);
+          if (stats.filterY < 0) throw new Error('filterY less than 0');
+          if (stats.filterY > settings.filterHeight) throw new Error(`filterY greater than ${settings.filterHeight}`);
 
-          // if (stats.deltaX < 0) throw new Error('deltaX less than 0');
-          // if (stats.deltaX > settings.width) throw new Error(`deltaX greater than ${settings.width}`);
-          // if (stats.deltaY < 0) throw new Error('deltaY less than 0');
-          // if (stats.deltaY > settings.height) throw new Error(`deltaY greater than ${settings.height}`);
+          if (stats.deltaX < 0) throw new Error('deltaX less than 0');
+          if (stats.deltaX > settings.width) throw new Error(`deltaX greater than ${settings.width}`);
+          if (stats.deltaY < 0) throw new Error('deltaY less than 0');
+          if (stats.deltaY > settings.height) throw new Error(`deltaY greater than ${settings.height}`);
 
           if (stats.inputX < 0) throw new Error('inputX less than 0');
           if (stats.inputX > settings.input.width) throw new Error(`inputX greater than ${settings.input.width}`);
@@ -161,16 +161,16 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
       return { convnetMatrixLog, brainMatrixLog };
     }
     describe('from inputs', () => {
-      it('can back propagate from a "4x4x1 input matrix" and a "1x4 output matrix" to a "16x1 filter matrix"', () => {
+      it('can back propagate from a "2x2 input matrix" and a "1x1 output matrix" to a "2x2 filter matrix"', () => {
         const settings = {
           width: 1,
-          height: 16,
+          height: 1,
           input: {
-            width: 4,
-            height: 4
+            width: 2,
+            height: 2,
           },
-          filterWidth: 4,
-          filterHeight: 4
+          filterWidth: 2,
+          filterHeight: 2
         };
 
         const logs = setupLogs(settings);
@@ -182,7 +182,7 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
         }
         expect(resultInputs).toEqual(expectedInputs);
       });
-      it('can back propagate from a "4x4x1 input matrix" and a "2x2x1 output matrix" to a "2x2x1 filter matrix"', () => {
+      it('can back propagate from a "4x4 input matrix" and a "1x4 output matrix" to a "4x4 filter matrix"', () => {
         const settings = {
           width: 1,
           height: 4,
@@ -203,7 +203,7 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
         }
         expect(resultInputs).toEqual(expectedInputs);
       });
-      it('can back propagate from a "4x4x1 input matrix" and a "3x3x1 output matrix" to a "9x1 filter matrix"', () => {
+      it('can back propagate from a "4x4 input matrix" and a "1x9 output matrix" to a "4x4 filter matrix"', () => {
         const settings = {
           width: 1,
           height: 9,
@@ -224,10 +224,10 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
         }
         expect(resultInputs).toEqual(expectedInputs);
       });
-      it('can back propagate from a "4x4x1 input matrix" and a "4x4x1 output matrix" to a "16x1 filter matrix"', () => {
+      it('can back propagate from a "4x4 input matrix" and a "1x16 output matrix" to a "4x4 filter matrix"', () => {
         const settings = {
-          width: 4,
-          height: 4,
+          width: 1,
+          height: 16,
           input: {
             width: 4,
             height: 4
@@ -245,10 +245,10 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
         }
         expect(resultInputs).toEqual(expectedInputs);
       });
-      it('can back propagate from a "6x6x8 input matrix" and a "24x24x8 output matrix" to a "10x10x8 filter matrix"', () => {
+      it('can back propagate from a "6x6 input matrix" and a "1x(24*24) output matrix" to a "6x6 filter matrix"', () => {
         const settings = {
           width: 1,
-          height: 24,
+          height: 24 * 24,
           input: {
             width: 6,
             height: 6
@@ -266,10 +266,10 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
         }
         expect(resultInputs).toEqual(expectedInputs);
       });
-      it('can back propagate from a "12x12x8 input matrix" and a "24x24x8 output matrix" to a "5x5x8 filter matrix"', () => {
+      it('can back propagate from a "12x12 input matrix" and a "1x(24*24) output matrix" to a "12x12 filter matrix"', () => {
         const settings = {
           width: 1,
-          height: 6,
+          height: 24 * 24,
           input: {
             width: 12,
             height: 12
@@ -287,10 +287,10 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
         }
         expect(resultInputs).toEqual(expectedInputs);
       });
-      it('can back propagate from a "24x24x1 input matrix" and a "24x24x8 output matrix" to a "5x5x1 filter matrix"', () => {
+      it('can back propagate from a "24x24 input matrix" and a "1x(24*24) output matrix" to a "24x24 filter matrix"', () => {
         const settings = {
           width: 1,
-          height: 24,
+          height: 24 * 24,
           input: {
             width: 24,
             height: 24
@@ -308,10 +308,10 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
         }
         expect(resultInputs).toEqual(expectedInputs);
       });
-      it('can back propagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix"', () => {
+      it('can back propagate from a "24x24 input matrix" and a "1x(12*12) output matrix" to a "24x24 filter matrix"', () => {
         const settings = {
           width: 1,
-          height: 12,
+          height: 12 * 12,
           input: {
             width: 24,
             height: 24
@@ -329,9 +329,9 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
         }
         expect(resultInputs).toEqual(expectedInputs);
       });
-      it('can back propagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix"', () => {
+      it('can back propagate from a "24x24 input matrix" and a "1x12 output matrix" to a "24x24 filter matrix"', () => {
         const settings = {
-          width: 12,
+          width: 1,
           height: 12,
           input: {
             width: 24,
@@ -352,16 +352,16 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
       });
     });
     describe('from deltas', () => {
-      it('can back propagate from a "4x4x1 input matrix" and a "3x3x1 output matrix" to a "2x2x1 filter matrix"', () => {
+      it('can back propagate from a "2x2 input matrix" and a "1x1 output matrix" to a "2x2 filter matrix"', () => {
         const settings = {
           width: 1,
-          height: 9,
+          height: 1,
           input: {
-            width: 4,
-            height: 4
+            width: 2,
+            height: 2,
           },
-          filterWidth: 4,
-          filterHeight: 4
+          filterWidth: 2,
+          filterHeight: 2
         };
 
         const logs = setupLogs(settings);
@@ -373,7 +373,7 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
         }
         expect(resultDeltas).toEqual(expectedDeltas);
       });
-      it('can back propagate from a "4x4x1 input matrix" and a "2x2x1 output matrix" to a "2x2x1 filter matrix"', () => {
+      it('can back propagate from a "4x4 input matrix" and a "1x4 output matrix" to a "4x4 filter matrix"', () => {
         const settings = {
           width: 1,
           height: 4,
@@ -394,7 +394,28 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
         }
         expect(resultDeltas).toEqual(expectedDeltas);
       });
-      it('can back propagate from a "4x4x1 input matrix" and a "4x4x1 output matrix" to a "4x4x1 filter matrix"', () => {
+      it('can back propagate from a "4x4 input matrix" and a "1x9 output matrix" to a "4x4 filter matrix"', () => {
+        const settings = {
+          width: 1,
+          height: 9,
+          input: {
+            width: 4,
+            height: 4
+          },
+          filterWidth: 4,
+          filterHeight: 4
+        };
+
+        const logs = setupLogs(settings);
+        const resultDeltas = logs.brainMatrixLog.toString('deltas').split(/\n/g);
+        const expectedDeltas = logs.convnetMatrixLog.toString('deltas').split(/\n/g);
+        if (shortenResults) {
+          resultDeltas.length = 200;
+          expectedDeltas.length = 200;
+        }
+        expect(resultDeltas).toEqual(expectedDeltas);
+      });
+      it('can back propagate from a "4x4 input matrix" and a "1x16 output matrix" to a "4x4 filter matrix"', () => {
         const settings = {
           width: 1,
           height: 16,
@@ -415,10 +436,10 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
         }
         expect(resultDeltas).toEqual(expectedDeltas);
       });
-      it('can back propagate from a "6x6x8 input matrix" and a "24x24x8 output matrix" to a "5x5x8 filter matrix"', () => {
+      it('can back propagate from a "6x6 input matrix" and a "1x(24*24) output matrix" to a "6x6 filter matrix"', () => {
         const settings = {
           width: 1,
-          height: 24,
+          height: 24 * 24,
           input: {
             width: 6,
             height: 6
@@ -436,10 +457,10 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
         }
         expect(resultDeltas).toEqual(expectedDeltas);
       });
-      it('can back propagate from a "12x12x8 input matrix" and a "24x24x8 output matrix" to a "5x5x8 filter matrix"', () => {
+      it('can back propagate from a "12x12 input matrix" and a "1x(24*24) output matrix" to a "12x12 filter matrix"', () => {
         const settings = {
           width: 1,
-          height: 24,
+          height: 24 * 24,
           input: {
             width: 12,
             height: 12
@@ -457,10 +478,10 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
         }
         expect(resultDeltas).toEqual(expectedDeltas);
       });
-      it('can back propagate from a "24x24x1 input matrix" and a "24x24x8 output matrix" to a "5x5x1 filter matrix"', () => {
+      it('can back propagate from a "24x24 input matrix" and a "1x(24*24) output matrix" to a "24x24 filter matrix"', () => {
         const settings = {
           width: 1,
-          height: 24,
+          height: 24 * 24,
           input: {
             width: 24,
             height: 24
@@ -478,10 +499,10 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
         }
         expect(resultDeltas).toEqual(expectedDeltas);
       });
-      it('can back propagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix"', () => {
+      it('can back propagate from a "24x24 input matrix" and a "1x(12*12) output matrix" to a "24x24 filter matrix"', () => {
         const settings = {
           width: 1,
-          height: 12,
+          height: 12 * 12,
           input: {
             width: 24,
             height: 24
@@ -499,7 +520,7 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
         }
         expect(resultDeltas).toEqual(expectedDeltas);
       });
-      it('can back propagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix"', () => {
+      it('can back propagate from a "24x24 input matrix" and a "1x12 output matrix" to a "24x24 filter matrix"', () => {
         const settings = {
           width: 1,
           height: 12,
@@ -562,16 +583,16 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
         expected, result
       }
     }
-    it('can back propagate from a "4x4x1 input matrix" and a "1x1x1 output matrix" to a "2x2x1 filter matrix"', () => {
+    it('can back propagate from a "2x2 input matrix" and a "1x1 output matrix" to a "2x2 filter matrix"', () => {
       const settings = {
         width: 1,
         height: 1,
         input: {
-          width: 4,
-          height: 4,
+          width: 2,
+          height: 2,
         },
-        filterWidth: 4,
-        filterHeight: 4
+        filterWidth: 2,
+        filterHeight: 2
       };
 
       const { result, expected } = setupOutputs(settings);
@@ -580,7 +601,7 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
       expect(result.length).toBe(settings.height);
       expect(result).toEqual(expected);
     });
-    it('can back propagate from a "4x4x1 input matrix" and a "2x2x1 output matrix" to a "2x2x1 filter matrix"', () => {
+    it('can back propagate from a "4x4 input matrix" and a "1x4 output matrix" to a "4x4 filter matrix"', () => {
       const settings = {
         width: 1,
         height: 4,
@@ -598,10 +619,10 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
       expect(result.length).toBe(settings.height);
       expect(result).toEqual(expected);
     });
-    it('can back propagate from a "4x4x1 input matrix" and a "4x4x1 output matrix" to a "4x4x1 filter matrix"', () => {
+    it('can back propagate from a "4x4 input matrix" and a "1x9 output matrix" to a "4x4 filter matrix"', () => {
       const settings = {
         width: 1,
-        height: 4,
+        height: 9,
         input: {
           width: 4,
           height: 4
@@ -616,10 +637,10 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
       expect(result.length).toBe(settings.height);
       expect(result).toEqual(expected);
     });
-    it('can back propagate from a "6x6x8 input matrix" and a "24x24x8 output matrix" to a "5x5x8 filter matrix"', () => {
+    it('can back propagate from a "4x4 input matrix" and a "1x16 output matrix" to a "4x4 filter matrix"', () => {
       const settings = {
         width: 1,
-        height: 24,
+        height: 16,
         input: {
           width: 6,
           height: 6
@@ -634,10 +655,28 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
       expect(result.length).toBe(settings.height);
       expect(result).toEqual(expected);
     });
-    it('can back propagate from a "12x12x8 input matrix" and a "24x24x8 output matrix" to a "5x5x8 filter matrix"', () => {
+    it('can back propagate from a "6x6 input matrix" and a "1x(24*24) output matrix" to a "6x6 filter matrix"', () => {
       const settings = {
         width: 1,
-        height: 24,
+        height: 24 * 24,
+        input: {
+          width: 6,
+          height: 6
+        },
+        filterWidth: 6,
+        filterHeight: 6
+      };
+
+      const { result, expected } = setupOutputs(settings);
+
+      expect(expected.length).toBe(settings.height);
+      expect(result.length).toBe(settings.height);
+      expect(result).toEqual(expected);
+    });
+    it('can back propagate from a "12x12 input matrix" and a "1x(24*24) output matrix" to a "12x12 filter matrix"', () => {
+      const settings = {
+        width: 1,
+        height: 24 * 24,
         input: {
           width: 12,
           height: 12
@@ -652,10 +691,10 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
       expect(result.length).toBe(settings.height);
       expect(result).toEqual(expected);
     });
-    it('can back propagate from a "24x24x1 input matrix" and a "24x24x8 output matrix" to a "5x5x1 filter matrix"', () => {
+    it('can back propagate from a "24x24 input matrix" and a "1x(24*24) output matrix" to a "24x24 filter matrix"', () => {
       const settings = {
         width: 1,
-        height: 24,
+        height: 24 * 24,
         input: {
           width: 24,
           height: 24,
@@ -670,10 +709,10 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
       expect(result.length).toBe(settings.height);
       expect(result).toEqual(expected);
     });
-    it('can back propagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix"', () => {
+    it('can back propagate from a "24x24 input matrix" and a "1x(12*12) output matrix" to a "24x24 filter matrix"', () => {
       const settings = {
         width: 1,
-        height: 12,
+        height: 12 * 12,
         input: {
           width: 24,
           height: 24
@@ -688,7 +727,7 @@ describe('layer.FullyConnected.compareFilterDeltas()', () => {
       expect(result.length).toBe(settings.height);
       expect(result).toEqual(expected);
     });
-    it('can back propagate from a "24x24x1 input matrix" and a "12x12x8 output matrix" to a "5x5x1 filter matrix"', () => {
+    it('can back propagate from a "24x24 input matrix" and a "1x12 output matrix" to a "24x24 filter matrix"', () => {
       const settings = {
         width: 1,
         height: 12,
