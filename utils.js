@@ -56,7 +56,7 @@ function fillPlusPlus(width, height, depth) {
   return result;
 }
 
-function fillPlusPlusVol(width, height, depth) {
+function fillPlusPlusVol(width, height = 1, depth = 1) {
   const result = new convnet.Vol(width, height, depth);
   let i = 1;
   for (let z = 0; z < depth; z++) {
@@ -105,11 +105,27 @@ function volDWToArrays(vol) {
   return result;
 }
 
+function lookupXYZ(index, width, height) {
+  const x = Math.floor(index % width);
+  const y = Math.floor((index / width) % height);
+  const z = Math.floor(index / (width * height));
+  return { x, y, z };
+}
+
+function lookupZYX(index, width, height, depth) {
+  const x = Math.floor(index / (depth * height));
+  const y = Math.floor((index / depth) % height);
+  const z = Math.floor(index % depth);
+  return { x, y, z };
+}
+
 module.exports = {
   fnClassToString,
   fillZeros,
   fillPlusPlus,
   fillPlusPlusVol,
+  lookupXYZ,
+  lookupZYX,
   volWToArrays,
   volDWToArrays
 };
